@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast Stickers — Custom High-Quality Stickers</title>
+<style>
+  :root{
+    --ink:#16181d;
+    --ink-soft:#5b616e;
+    --paper:#ffffff;
+    --paper-soft:#f4f5f7;
+    --line:#e4e6ea;
+    --brand:#ff5a36;
+    --brand-dark:#e2451f;
+    --brand-light:#fff1ec;
+    --good:#1a8a4a;
+    --radius:16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper-soft);color:var(--ink);}
+  img{max-width:100%;display:block;}
+  a{color:inherit;}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px;}
+
+  /* Header */
+  header.site{
+    position:sticky;top:0;z-index:50;
+    background:rgba(255,255,255,.9);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 0;}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-0.02em;}
+  .logo .dot{width:12px;height:12px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 4px var(--brand-light);}
+  .nav a.cta{
+    background:var(--brand);color:#fff;padding:10px 20px;border-radius:999px;
+    font-weight:700;font-size:14px;text-decoration:none;border:2px solid var(--ink);
+    box-shadow:3px 3px 0 rgba(22,24,29,.9);
+    transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+  }
+  .nav a.cta:hover{background:var(--brand-dark);transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(22,24,29,.9);}
+  .nav a.cta:active{transform:translate(1px,1px);box-shadow:1px 1px 0 rgba(22,24,29,.9);}
+
+  /* Hero */
+  .hero{
+    padding:72px 0 56px;
+    background:
+      radial-gradient(1200px 400px at 15% -10%, #ffe3d6 0%, transparent 60%),
+      radial-gradient(900px 400px at 100% 0%, #ffe9c9 0%, transparent 55%);
+  }
+  .hero-inner{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--brand-light);color:var(--brand-dark);
+    font-weight:700;font-size:13px;padding:6px 14px;border-radius:999px;margin-bottom:18px;
+  }
+  h1{font-size:52px;line-height:1.05;letter-spacing:-0.03em;margin:0 0 18px;}
+  h1 span{color:var(--brand);}
+  .hero p.lead{font-size:18px;color:var(--ink-soft);line-height:1.55;margin:0 0 28px;max-width:46ch;}
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    border-radius:12px;padding:14px 26px;font-weight:700;font-size:15px;
+    text-decoration:none;border:2px solid var(--ink);cursor:pointer;
+    box-shadow:4px 4px 0 rgba(22,24,29,.9);
+    transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+  }
+  .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(22,24,29,.9);}
+  .btn:active{transform:translate(1px,1px);box-shadow:2px 2px 0 rgba(22,24,29,.9);}
+  .btn-primary{background:var(--brand);color:#fff;}
+  .btn-primary:hover{background:var(--brand-dark);}
+  .btn-ghost{background:#fff;color:var(--ink);}
+  .btn-ghost:hover{background:var(--paper-soft);}
+
+  .hero-art{position:relative;height:360px;}
+  .sticker-float{
+    position:absolute;background:#fff;border:2px solid var(--ink);
+    box-shadow:6px 6px 0 rgba(22,24,29,.9);
+    display:flex;align-items:center;justify-content:center;font-weight:800;
+  }
+  .s1{width:150px;height:150px;border-radius:50%;top:10px;left:40px;background:#ffd23f;transform:rotate(-8deg);font-size:15px;}
+  .s2{width:130px;height:130px;border-radius:24px;top:150px;left:220px;background:#7ee0c3;transform:rotate(10deg);font-size:14px;}
+  .s3{width:110px;height:150px;border-radius:20px;top:20px;left:280px;background:#a7c7ff;transform:rotate(-4deg);}
+  .s4{width:120px;height:90px;border-radius:16px;top:220px;left:40px;background:#ffb4c6;transform:rotate(6deg);}
+
+  .trust{display:flex;gap:28px;flex-wrap:wrap;margin-top:40px;color:var(--ink-soft);font-size:14px;font-weight:600;}
+  .trust span{display:flex;align-items:center;gap:8px;}
+  .trust svg{flex:none;}
+
+  /* Section shell */
+  section{padding:64px 0;}
+  .section-head{max-width:640px;margin:0 auto 40px;text-align:center;}
+  .section-head h2{font-size:34px;letter-spacing:-0.02em;margin:0 0 12px;}
+  .section-head p{color:var(--ink-soft);font-size:16px;line-height:1.55;margin:0;}
+
+  /* Configurator */
+  #order{background:var(--paper);}
+  .configurator{
+    display:grid;grid-template-columns:1fr 380px;gap:0;
+    background:var(--paper);border:1px solid var(--line);border-radius:24px;
+    overflow:hidden;box-shadow:0 20px 60px -30px rgba(22,24,29,.25);
+  }
+  .config-form{padding:40px;}
+  .config-preview{
+    background:var(--ink);color:#fff;padding:40px;
+    display:flex;flex-direction:column;
+  }
+  .field{margin-bottom:26px;}
+  .field label{display:block;font-weight:700;font-size:14px;margin-bottom:10px;}
+  .field .hint{font-weight:400;color:var(--ink-soft);font-size:12.5px;margin-top:6px;}
+
+  .shape-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .shape-opt{
+    border:2px solid var(--line);border-radius:12px;padding:14px 8px 10px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;
+    background:var(--paper-soft);transition:all .12s ease;
+  }
+  .shape-opt:hover{border-color:#c7cbd3;}
+  .shape-opt.active{border-color:var(--brand);background:var(--brand-light);}
+  .shape-opt .swatch{
+    width:34px;height:34px;border:2px solid var(--ink);
+    box-shadow:3px 3px 0 rgba(22,24,29,.9);transition:transform .12s ease;
+  }
+  .shape-opt:hover .swatch{transform:translate(-1px,-1px);}
+  .shape-opt[data-shape="square"] .swatch{border-radius:0;background:#7ee0c3;}
+  .shape-opt[data-shape="rectangle"] .swatch{width:42px;height:28px;border-radius:0;background:#7ee0c3;}
+  .shape-opt[data-shape="circle"] .swatch{border-radius:50%;background:#ffd23f;}
+  .shape-opt[data-shape="oval"] .swatch{width:42px;height:28px;border-radius:50%;background:#ffd23f;}
+  .shape-opt .swatch.swatch-custom{border:none;box-shadow:none;filter:drop-shadow(3px 3px 0 rgba(22,24,29,.9));}
+  .shape-opt span{font-size:12.5px;font-weight:700;}
+
+  .size-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .size-head label{margin-bottom:0;}
+  .unit-select{
+    border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;
+    color:var(--ink);background:#fff;cursor:pointer;
+  }
+  .unit-select:focus{outline:none;border-color:var(--brand);}
+
+  .dims-row{display:grid;gap:14px;}
+  .dims-row.two{grid-template-columns:1fr 1fr;}
+  .num-field{position:relative;}
+  .num-field input{
+    width:100%;padding:12px 44px 12px 14px;border:1.5px solid var(--line);border-radius:10px;
+    font-size:15px;font-weight:600;color:var(--ink);background:#fff;
+  }
+  .num-field input:focus{outline:none;border-color:var(--brand);}
+  .num-field .unit{
+    position:absolute;right:14px;top:50%;transform:translateY(-50%);
+    color:var(--ink-soft);font-size:13px;font-weight:600;pointer-events:none;
+  }
+  .num-field .sublabel{font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;display:block;}
+
+  .qty-field{
+    display:flex;align-items:stretch;border:2px solid var(--ink);border-radius:10px;overflow:hidden;width:fit-content;
+    box-shadow:3px 3px 0 rgba(22,24,29,.9);
+  }
+  .qty-field button{
+    width:44px;background:var(--paper-soft);border:none;font-size:20px;cursor:pointer;color:var(--ink);font-weight:700;
+  }
+  .qty-field button:hover{background:var(--brand-light);color:var(--brand-dark);}
+  .qty-field input{
+    width:80px;text-align:center;border:none;border-left:2px solid var(--ink);border-right:2px solid var(--ink);
+    font-size:16px;font-weight:700;padding:10px 6px;
+  }
+  .qty-field input:focus{outline:none;}
+
+  .warn{
+    background:#fff4e5;border:1px solid #ffdca6;color:#8a5a00;
+    border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;margin-top:10px;display:none;
+  }
+  .warn.show{display:block;}
+
+  .upload-box{
+    border:1.5px dashed var(--line);border-radius:12px;padding:16px;cursor:pointer;
+    background:var(--paper-soft);transition:border-color .12s ease;
+  }
+  .upload-box:hover{border-color:var(--brand);}
+  .upload-empty{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;color:var(--ink-soft);font-size:13px;font-weight:600;}
+  .upload-empty .upload-icon{font-size:22px;}
+  .upload-empty .hint{font-weight:400;font-size:11.5px;color:#9a9fa8;margin:0;}
+  .upload-filled{display:none;align-items:center;gap:12px;}
+  .upload-thumb-wrap{flex:none;width:44px;height:44px;}
+  .upload-thumb-wrap img{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;}
+  .file-badge{
+    width:44px;height:44px;border-radius:8px;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.02em;
+  }
+  .upload-filled span#uploadName{flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .upload-filled button{
+    background:none;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;
+    cursor:pointer;color:var(--ink-soft);flex:none;
+  }
+  .upload-filled button:hover{border-color:#c7cbd3;color:var(--ink);}
+  .upload-box.has-image .upload-empty{display:none;}
+  .upload-box.has-image .upload-filled{display:flex;}
+
+  .print-guidelines{
+    margin-top:12px;padding:14px 16px;background:var(--paper-soft);border:1px solid var(--line);border-radius:12px;
+    font-size:12px;color:var(--ink-soft);line-height:1.6;
+  }
+  .print-guidelines strong{color:var(--ink);}
+  .print-guidelines ul{margin:6px 0 0;padding-left:18px;}
+  .print-guidelines li{margin-bottom:4px;}
+  .print-guidelines li:last-child{margin-bottom:0;}
+
+  /* Preview panel */
+  .preview-stage{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    min-height:220px;
+  }
+  #shapePreview{
+    background:#fff8f2;border:2px dashed rgba(255,255,255,.35);
+  }
+  .preview-caption{text-align:center;font-size:13px;color:rgba(255,255,255,.6);margin-top:14px;font-weight:600;}
+
+  .price-box{
+    margin-top:28px;background:#fff;color:var(--ink);border:2px solid var(--ink);border-radius:16px;
+    padding:20px 22px;box-shadow:4px 4px 0 rgba(0,0,0,.4);
+  }
+  .price-row{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--ink-soft);padding:5px 0;}
+  .price-row strong{color:var(--ink);font-weight:700;}
+  .price-row.total{
+    margin-top:8px;padding-top:14px;border-top:1.5px dashed var(--line);
+    font-size:26px;font-weight:800;color:var(--ink);
+  }
+  .price-row.total span:last-child{color:var(--brand);}
+  .ship-note{font-size:12.5px;color:var(--ink-soft);margin-top:12px;padding-top:12px;border-top:1.5px dashed var(--line);line-height:1.5;text-align:center;}
+  .ship-note.free{color:var(--good);font-weight:700;}
+
+  .btn-order{
+    margin-top:20px;width:100%;background:var(--brand);color:#fff;border:2px solid var(--ink);
+    padding:17px 22px;border-radius:14px;font-weight:800;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    box-shadow:4px 4px 0 rgba(0,0,0,.5);
+    transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+  }
+  .btn-order:hover{background:var(--brand-dark);transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(0,0,0,.5);}
+  .btn-order:active{transform:translate(1px,1px);box-shadow:2px 2px 0 rgba(0,0,0,.5);}
+  .btn-order .btn-order-total{font-weight:800;}
+
+  /* Features */
+  .feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .feature-card{
+    background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:26px 22px;
+  }
+  .feature-card .icon{
+    width:44px;height:44px;border-radius:12px;background:var(--brand-light);color:var(--brand-dark);
+    display:flex;align-items:center;justify-content:center;margin-bottom:16px;
+  }
+  .feature-card h3{font-size:16px;margin:0 0 8px;}
+  .feature-card p{font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin:0;}
+
+  /* Footer */
+  footer{background:var(--ink);color:rgba(255,255,255,.6);padding:40px 0;font-size:13.5px;}
+  .footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+  .footer-inner .logo{color:#fff;font-size:16px;}
+
+  @media (max-width:900px){
+    .hero-inner{grid-template-columns:1fr;}
+    .hero-art{display:none;}
+    .configurator{grid-template-columns:1fr;}
+    .feature-grid{grid-template-columns:1fr 1fr;}
+    h1{font-size:38px;}
+  }
+  @media (max-width:560px){
+    .feature-grid{grid-template-columns:1fr;}
+    .shape-grid{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap nav">
+    <div class="logo"><span class="dot"></span>Fast Stickers</div>
+    <a class="cta" href="#order">Get a quote</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-inner">
+    <div>
+      <span class="eyebrow">● Printed &amp; dispatched fast</span>
+      <h1>Custom high-quality <span>stickers</span>, made your shape.</h1>
+      <p class="lead">Square, round, oval, rectangle or a fully custom cut, tell us the size and quantity, get an instant price, and we'll print it on durable vinyl.</p>
+      <div class="hero-actions">
+        <a href="#order" class="btn btn-primary">Design my sticker</a>
+        <a href="#features" class="btn btn-ghost">How it works</a>
+      </div>
+      <div class="trust">
+        <span>✓ Free delivery over £30</span>
+        <span>✓ Waterproof vinyl</span>
+        <span>✓ Any shape, any size</span>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="sticker-float s1">50%<br>OFF*</div>
+      <div class="sticker-float s2">WOOF</div>
+      <div class="sticker-float s3"></div>
+      <div class="sticker-float s4">★★★★★</div>
+    </div>
+  </div>
+</section>
+
+<section id="order">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Build your sticker</h2>
+      <p>Pick a shape, set your size and quantity. Your price updates instantly.</p>
+    </div>
+
+    <div class="configurator">
+      <div class="config-form">
+
+        <div class="field">
+          <label>1. Choose a shape</label>
+          <div class="shape-grid" id="shapeGrid">
+            <div class="shape-opt active" data-shape="square"><div class="swatch"></div><span>Square</span></div>
+            <div class="shape-opt" data-shape="rectangle"><div class="swatch"></div><span>Rectangle</span></div>
+            <div class="shape-opt" data-shape="circle"><div class="swatch"></div><span>Circle</span></div>
+            <div class="shape-opt" data-shape="oval"><div class="swatch"></div><span>Oval</span></div>
+            <div class="shape-opt" data-shape="custom">
+              <svg class="swatch swatch-custom" width="34" height="34" viewBox="0 0 34 34">
+                <polygon points="17,2 32,13 26,32 8,32 2,13" fill="#a7c7ff" stroke="#16181d" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+              <span>Custom shape</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="size-head">
+            <label>2. Size</label>
+            <select id="unitSelect" class="unit-select">
+              <option value="mm">mm</option>
+              <option value="cm">cm</option>
+              <option value="inch">inch</option>
+              <option value="m">metre</option>
+            </select>
+          </div>
+          <div class="dims-row two" id="dimsRow">
+            <div class="num-field">
+              <span class="sublabel" id="widthLabel">Width</span>
+              <input type="number" id="widthInput" min="1" step="any" value="80">
+              <span class="unit" id="widthUnitLabel" style="top:calc(50% + 8px)">mm</span>
+            </div>
+            <div class="num-field" id="heightField">
+              <span class="sublabel" id="heightLabel">Height</span>
+              <input type="number" id="heightInput" min="1" step="any" value="80">
+              <span class="unit" id="heightUnitLabel" style="top:calc(50% + 8px)">mm</span>
+            </div>
+          </div>
+          <div class="warn" id="sizeWarn">Max dimension is 710mm on our 720mm roll (a small margin is kept either side for cutting).</div>
+          <div id="customNote" class="hint" style="display:none;margin-top:10px;">Custom shapes are cut to your outline — priced by the bounding box above. Email your artwork after ordering and we'll confirm the cut path.</div>
+        </div>
+
+        <div class="field">
+          <label>3. Quantity</label>
+          <div class="qty-field">
+            <button type="button" id="qtyMinus">−</button>
+            <input type="number" id="qtyInput" min="1" step="1" value="1">
+            <button type="button" id="qtyPlus">+</button>
+          </div>
+          <div class="hint">Ordering just one? We still run a full-width sheet, so single stickers carry a small minimum charge.</div>
+        </div>
+
+        <div class="field">
+          <label>4. Upload your design <span style="font-weight:400;color:var(--ink-soft);">(optional)</span></label>
+          <div class="upload-box" id="uploadBox">
+            <input type="file" id="logoInput" accept=".pdf,.png,.svg,.jpg,.jpeg,.tif,.tiff,application/pdf,image/png,image/svg+xml,image/jpeg,image/tiff" hidden>
+            <div class="upload-empty" id="uploadEmpty">
+              <span class="upload-icon">🖼️</span>
+              <span>Click to upload artwork or a logo</span>
+              <span class="hint">PDF, PNG, SVG, JPG or TIFF</span>
+            </div>
+            <div class="upload-filled" id="uploadFilled">
+              <div class="upload-thumb-wrap" id="uploadThumbWrap"></div>
+              <span id="uploadName"></span>
+              <button type="button" id="uploadRemove">Remove</button>
+            </div>
+          </div>
+          <div class="print-guidelines">
+            <strong>Recommended for print:</strong>
+            <ul>
+              <li><strong>Vector art</strong> (PDF or SVG) prints sharpest — ideal for logos and text, with fonts outlined/embedded.</li>
+              <li><strong>Raster art</strong> (PNG, JPG, TIFF) needs at least <strong>300 DPI at final print size</strong> — e.g. an 80×80mm sticker needs a ~945×945px image.</li>
+              <li>Use <strong>PNG</strong> with a transparent background for custom-cut or irregular shapes.</li>
+              <li><strong>CMYK</strong> colour mode gives the truest print match; sRGB is fine if that's not possible.</li>
+              <li>Keep a small <strong>bleed</strong> (2mm+) beyond your cut line, and keep key text 2mm inside it.</li>
+              <li>Max file size 50MB.</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="config-preview">
+        <div class="preview-stage">
+          <svg id="shapePreview" width="220" height="220" viewBox="0 0 220 220"></svg>
+        </div>
+        <div class="preview-caption" id="previewCaption">80mm × 80mm square</div>
+
+        <div class="price-box">
+          <div class="price-row"><span id="rowSubtotalLabel">Stickers (1×)</span><strong id="rowSubtotal">£0.00</strong></div>
+          <div class="price-row"><span>Postage &amp; packaging</span><strong id="rowShip">£0.00</strong></div>
+          <div class="price-row total"><span>Total</span><span id="rowTotal">£0.00</span></div>
+          <div class="ship-note" id="shipNote">Add items to reach £30 for free delivery.</div>
+        </div>
+
+        <button class="btn-order" type="button">
+          <span>🛒 Add to basket</span>
+          <span class="btn-order-total" id="btnOrderTotal">£0.00</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Why Fast Stickers</h2>
+      <p>Small print runs, custom shapes, no fuss.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="icon">✂️</div>
+        <h3>Any shape you like</h3>
+        <p>Square, round, oval, rectangle or send us a fully custom outline — we cut to shape, not just print.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">💧</div>
+        <h3>Durable vinyl</h3>
+        <p>Waterproof, UV-resistant vinyl that holds up on laptops, bottles, windows and vans.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📦</div>
+        <h3>Free delivery over £30</h3>
+        <p>Orders under £30 ship for a flat £10 — everything else goes free.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">⚡</div>
+        <h3>Instant pricing</h3>
+        <p>See your price the moment you set a size and quantity — no waiting on a quote.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div class="logo">Fast Stickers</div>
+    <div>Custom high-quality stickers, printed and cut to order. Prices are estimates and may be confirmed at checkout.</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // ---- Pricing constants -------------------------------------------------
+  var SHEET_WIDTH_MM   = 720;   // width of the vinyl roll
+  var SIDE_MARGIN_MM   = 5;     // kept clear either side of the roll for cutting
+  var MAX_DIM_MM        = SHEET_WIDTH_MM - (SIDE_MARGIN_MM * 2); // 710mm
+  var GUTTER_MM         = 5;    // gap left between stickers when nesting on the sheet
+  var COST_PER_METRE    = 10;   // £10 per linear metre of full-width roll
+  var MARGIN_MULTIPLIER = 1.5;  // 50% margin on top of raw vinyl cost
+  var SINGLE_SETUP_MM   = 200;  // extra length billed for a lone, one-off sticker
+  var FREE_DELIVERY_AT  = 30;   // £
+  var FLAT_POSTAGE      = 10;   // £
+  var MIN_ORDER_PRICE   = 4.50; // £ floor so a tiny/one-off run never looks silly-cheap
+
+  var usableWidth = SHEET_WIDTH_MM - (SIDE_MARGIN_MM * 2); // 710mm to pack across
+
+  // Units: all pricing/geometry stays in mm internally; these just convert
+  // what the customer types/sees.
+  var UNIT_TO_MM = { mm: 1, cm: 10, inch: 25.4, m: 1000 };
+  var UNIT_LABEL = { mm: 'mm', cm: 'cm', inch: 'in', m: 'm' };
+
+  // File types the browser can actually render inline for the live preview.
+  var PREVIEWABLE_TYPES = /^image\/(png|jpeg|svg\+xml)$/;
+  var PREVIEWABLE_EXT = /\.(png|jpe?g|svg)$/i;
+
+  // ---- State ---------------------------------------------------------------
+  var state = { shape: 'square', width: 80, height: 80, qty: 1, unit: 'mm', image: null, imagePreviewable: false, fileName: '', fileExt: '' };
+
+  // ---- Elements --------------------------------------------------------
+  var shapeGrid    = document.getElementById('shapeGrid');
+  var widthInput   = document.getElementById('widthInput');
+  var heightInput  = document.getElementById('heightInput');
+  var heightField  = document.getElementById('heightField');
+  var widthLabel   = document.getElementById('widthLabel');
+  var widthUnitLabel  = document.getElementById('widthUnitLabel');
+  var heightUnitLabel = document.getElementById('heightUnitLabel');
+  var unitSelect   = document.getElementById('unitSelect');
+  var qtyInput     = document.getElementById('qtyInput');
+  var qtyMinus     = document.getElementById('qtyMinus');
+  var qtyPlus      = document.getElementById('qtyPlus');
+  var sizeWarn     = document.getElementById('sizeWarn');
+  var customNote   = document.getElementById('customNote');
+  var previewSvg   = document.getElementById('shapePreview');
+  var previewCaption = document.getElementById('previewCaption');
+  var rowSubtotalLabel = document.getElementById('rowSubtotalLabel');
+  var rowSubtotal = document.getElementById('rowSubtotal');
+  var rowShip = document.getElementById('rowShip');
+  var rowTotal = document.getElementById('rowTotal');
+  var btnOrderTotal = document.getElementById('btnOrderTotal');
+  var shipNote = document.getElementById('shipNote');
+  var uploadBox    = document.getElementById('uploadBox');
+  var logoInput    = document.getElementById('logoInput');
+  var uploadThumbWrap = document.getElementById('uploadThumbWrap');
+  var uploadName   = document.getElementById('uploadName');
+  var uploadRemove = document.getElementById('uploadRemove');
+
+  function fmt(n){ return '£' + n.toFixed(2); }
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+  // mm -> the customer's chosen display unit, trimmed of float noise
+  function fromMM(mmVal, unit){
+    var v = mmVal / UNIT_TO_MM[unit];
+    return Math.round(v * 100) / 100;
+  }
+
+  // ---- Shape selection ---------------------------------------------------
+  shapeGrid.addEventListener('click', function(e){
+    var opt = e.target.closest('.shape-opt');
+    if(!opt) return;
+    Array.prototype.forEach.call(shapeGrid.children, function(c){ c.classList.remove('active'); });
+    opt.classList.add('active');
+    state.shape = opt.getAttribute('data-shape');
+    applyShapeUI();
+    recalc();
+  });
+
+  function applyShapeUI(){
+    var singleDim = (state.shape === 'square' || state.shape === 'circle');
+    heightField.style.display = singleDim ? 'none' : '';
+    document.getElementById('dimsRow').style.gridTemplateColumns = singleDim ? '1fr' : '1fr 1fr';
+    widthLabel.textContent = state.shape === 'circle' ? 'Diameter'
+                            : state.shape === 'square' ? 'Size'
+                            : 'Width';
+    customNote.style.display = state.shape === 'custom' ? 'block' : 'none';
+    if(singleDim){ heightInput.value = widthInput.value; }
+  }
+
+  // ---- Logo / artwork upload (preview only, nothing is sent anywhere) ------
+  // PNG/JPG/SVG can be rendered straight into the shape preview. PDF and
+  // TIFF aren't renderable by a browser <img>/<image>, so those just show a
+  // file-type badge — the file itself is still "attached" for the order.
+  uploadBox.addEventListener('click', function(e){
+    if(e.target === uploadRemove) return;
+    logoInput.click();
+  });
+  logoInput.addEventListener('change', function(){
+    var file = logoInput.files && logoInput.files[0];
+    if(!file) return;
+    var ext = (file.name.split('.').pop() || '').toUpperCase();
+    var previewable = PREVIEWABLE_TYPES.test(file.type) || PREVIEWABLE_EXT.test(file.name);
+    state.fileName = file.name;
+    state.fileExt = ext;
+    state.imagePreviewable = previewable;
+    uploadName.textContent = file.name;
+    uploadBox.classList.add('has-image');
+
+    if(previewable){
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        state.image = ev.target.result;
+        uploadThumbWrap.innerHTML = '<img src="' + state.image + '" alt="">';
+        recalc();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      state.image = null;
+      uploadThumbWrap.innerHTML = '<div class="file-badge">' + ext + '</div>';
+      recalc();
+    }
+  });
+  uploadRemove.addEventListener('click', function(e){
+    e.stopPropagation();
+    state.image = null;
+    state.imagePreviewable = false;
+    state.fileName = '';
+    state.fileExt = '';
+    logoInput.value = '';
+    uploadBox.classList.remove('has-image');
+    recalc();
+  });
+
+  // ---- Dimension inputs ----------------------------------------------------
+  // Fields are typed in state.unit; everything is converted to mm for
+  // pricing/geometry, which stay unit-agnostic.
+  function readDims(){
+    var factor = UNIT_TO_MM[state.unit];
+    var w = clamp((parseFloat(widthInput.value) || 0) * factor, 1, 99999);
+    var h;
+    if(state.shape === 'square' || state.shape === 'circle'){
+      h = w;
+    } else {
+      h = clamp((parseFloat(heightInput.value) || 0) * factor, 1, 99999);
+    }
+    var overMax = (w > MAX_DIM_MM) || (h > MAX_DIM_MM);
+    sizeWarn.classList.toggle('show', overMax);
+    sizeWarn.textContent = 'Max dimension is ' + fromMM(MAX_DIM_MM, state.unit) + UNIT_LABEL[state.unit] +
+      ' (710mm on our 720mm roll — a small margin is kept either side for cutting).';
+    w = clamp(w, 1, MAX_DIM_MM);
+    h = clamp(h, 1, MAX_DIM_MM);
+    state.width = w;
+    state.height = h;
+  }
+
+  widthInput.addEventListener('input', function(){ readDims(); recalc(); });
+  heightInput.addEventListener('input', function(){ readDims(); recalc(); });
+  // Snap the visible field back to the clamped value once the user leaves it,
+  // so the number on screen always matches what's actually being priced.
+  widthInput.addEventListener('blur', function(){ widthInput.value = fromMM(state.width, state.unit); });
+  heightInput.addEventListener('blur', function(){ heightInput.value = fromMM(state.height, state.unit); });
+
+  // ---- Units -----------------------------------------------------------
+  unitSelect.addEventListener('change', function(){
+    state.unit = unitSelect.value;
+    var label = UNIT_LABEL[state.unit];
+    widthUnitLabel.textContent = label;
+    heightUnitLabel.textContent = label;
+    // state.width/height are already authoritative in mm — just re-render
+    // the fields in the newly chosen unit.
+    widthInput.value = fromMM(state.width, state.unit);
+    heightInput.value = fromMM(state.height, state.unit);
+    readDims();
+    recalc();
+  });
+
+  // ---- Quantity ----------------------------------------------------------
+  function readQty(){
+    var q = Math.round(parseFloat(qtyInput.value) || 1);
+    q = clamp(q, 1, 100000);
+    qtyInput.value = q;
+    state.qty = q;
+  }
+  qtyInput.addEventListener('input', function(){ readQty(); recalc(); });
+  qtyMinus.addEventListener('click', function(){ qtyInput.value = Math.max(1, (parseInt(qtyInput.value)||1) - 1); readQty(); recalc(); });
+  qtyPlus.addEventListener('click', function(){ qtyInput.value = (parseInt(qtyInput.value)||1) + 1; readQty(); recalc(); });
+
+  // ---- Pricing -------------------------------------------------------------
+  // Vinyl is bought by the linear metre of the full-width (720mm) roll, so
+  // every job is billed on the length of roll it consumes, not raw area.
+  function billedLengthMM(){
+    var w = state.width, h = state.height;
+
+    if(state.qty === 1){
+      // A lone sticker still needs a full-width run of the machine, so we
+      // bill the smaller dimension plus a fixed setup allowance.
+      var smallest = Math.min(w, h);
+      return smallest + SINGLE_SETUP_MM;
+    }
+
+    // Nest stickers across the usable width, row by row, then bill the
+    // total roll length those rows consume.
+    var perRow = Math.max(1, Math.floor((usableWidth + GUTTER_MM) / (w + GUTTER_MM)));
+    var rows = Math.ceil(state.qty / perRow);
+    return rows * (h + GUTTER_MM);
+  }
+
+  function recalc(){
+    var lengthMM = billedLengthMM();
+    var rawCost = (lengthMM / 1000) * COST_PER_METRE;
+    // A £4.50 floor keeps a one-off small run from pricing out at pennies —
+    // there's always a real minimum cost to setting up and cutting a job.
+    var priced = Math.max(rawCost * MARGIN_MULTIPLIER, MIN_ORDER_PRICE);
+
+    var shipping = priced >= FREE_DELIVERY_AT ? 0 : FLAT_POSTAGE;
+    var total = priced + shipping;
+
+    rowSubtotalLabel.textContent = 'Stickers (' + state.qty + '×)';
+    rowSubtotal.textContent = fmt(priced);
+    rowShip.textContent = shipping === 0 ? 'Free' : fmt(shipping);
+    rowTotal.textContent = fmt(total);
+    btnOrderTotal.textContent = fmt(total);
+
+    if(shipping === 0){
+      shipNote.textContent = 'Nice — this order qualifies for free delivery.';
+      shipNote.classList.add('free');
+    } else {
+      shipNote.textContent = 'Add ' + fmt(FREE_DELIVERY_AT - priced) + ' more to your order for free delivery.';
+      shipNote.classList.remove('free');
+    }
+
+    updatePreview();
+  }
+
+  // ---- Preview -------------------------------------------------------------
+  // Squares and rectangles are cut sharp; circles and ovals are fully round
+  // via <ellipse>.
+  function shapeGeometry(pw, ph, x, y){
+    if(state.shape === 'circle' || state.shape === 'oval'){
+      return { tag: 'ellipse', attrs: 'cx="110" cy="110" rx="' + (pw/2) + '" ry="' + (ph/2) + '"' };
+    }
+    if(state.shape === 'custom'){
+      var d = 'M ' + (x+pw*0.5) + ' ' + y +
+              ' L ' + (x+pw) + ' ' + (y+ph*0.35) +
+              ' L ' + (x+pw*0.8) + ' ' + (y+ph) +
+              ' L ' + (x+pw*0.15) + ' ' + (y+ph) +
+              ' L ' + x + ' ' + (y+ph*0.35) + ' Z';
+      return { tag: 'path', attrs: 'd="' + d + '"' };
+    }
+    return { tag: 'rect', attrs: 'x="' + x + '" y="' + y + '" width="' + pw + '" height="' + ph + '"' };
+  }
+
+  function updatePreview(){
+    var w = state.width, h = state.height;
+    var box = 180; // px available inside the 220x220 svg
+    var scale = box / Math.max(w, h);
+    var pw = w * scale, ph = h * scale;
+    var x = (220 - pw) / 2, y = (220 - ph) / 2;
+
+    var geo = shapeGeometry(pw, ph, x, y);
+    var fillColor = (state.shape === 'circle' || state.shape === 'oval') ? '#ffd23f'
+                  : state.shape === 'custom' ? '#a7c7ff' : '#7ee0c3';
+
+    var markup;
+    if(state.image && state.imagePreviewable){
+      markup = '<defs><clipPath id="shapeClip"><' + geo.tag + ' ' + geo.attrs + ' /></clipPath></defs>' +
+               '<image href="' + state.image + '" x="' + x + '" y="' + y + '" width="' + pw + '" height="' + ph +
+               '" preserveAspectRatio="xMidYMid slice" clip-path="url(#shapeClip)" />' +
+               '<' + geo.tag + ' ' + geo.attrs + ' fill="none" stroke="#16181d" stroke-width="3"/>';
+    } else {
+      markup = '<' + geo.tag + ' ' + geo.attrs + ' fill="' + fillColor + '" stroke="#16181d" stroke-width="3"/>';
+    }
+    previewSvg.innerHTML = markup;
+
+    var unit = UNIT_LABEL[state.unit];
+    var dispW = fromMM(w, state.unit), dispH = fromMM(h, state.unit);
+    var label = state.shape === 'square' ? (dispW + unit + ' × ' + dispW + unit + ' square')
+              : state.shape === 'circle' ? (dispW + unit + ' diameter circle')
+              : (dispW + unit + ' × ' + dispH + unit + ' ' + state.shape);
+    if(state.qty > 1){ label += '  ·  qty ' + state.qty; }
+    if(state.fileName && !state.imagePreviewable){ label += '  ·  ' + state.fileExt + ' attached'; }
+    previewCaption.textContent = label;
+  }
+
+  // ---- init ----------------------------------------------------------------
+  applyShapeUI();
+  readDims();
+  readQty();
+  recalc();
+})();
+</script>
+
+</body>
+</html>
