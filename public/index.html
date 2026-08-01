@@ -240,7 +240,16 @@
   }
   .btn-order:hover{background:var(--brand-dark);transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(0,0,0,.5);}
   .btn-order:active{transform:translate(1px,1px);box-shadow:2px 2px 0 rgba(0,0,0,.5);}
+  .btn-order:disabled{opacity:.7;cursor:default;transform:none;box-shadow:4px 4px 0 rgba(0,0,0,.5);}
   .btn-order .btn-order-total{font-weight:800;}
+  .checkout-note{text-align:center;font-size:12px;color:rgba(255,255,255,.5);margin-top:10px;font-weight:600;}
+  .checkout-msg{
+    display:none;margin-top:14px;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;line-height:1.5;text-align:center;
+  }
+  .checkout-msg.show{display:block;}
+  .checkout-msg.error{background:#3a1c14;color:#ffb4a3;border:1px solid #6b2f1f;}
+  .checkout-msg.success{background:#123626;color:#7ee0c3;border:1px solid #1f5c42;}
+  .checkout-msg.info{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15);}
 
   /* Features */
   .feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
@@ -355,7 +364,7 @@
             </div>
           </div>
           <div class="warn" id="sizeWarn">Max dimension is 710mm on our 720mm roll (a small margin is kept either side for cutting).</div>
-          <div id="customNote" class="hint" style="display:none;margin-top:10px;">Custom shapes are cut to your outline — priced by the bounding box above. Email your artwork after ordering and we'll confirm the cut path.</div>
+          <div id="customNote" class="hint" style="display:none;margin-top:10px;">Custom shapes are cut to your outline — priced by the bounding box above. Upload your outline artwork below and we'll confirm the exact cut path after checkout.</div>
         </div>
 
         <div class="field">
@@ -391,7 +400,7 @@
               <li>Use <strong>PNG</strong> with a transparent background for custom-cut or irregular shapes.</li>
               <li><strong>CMYK</strong> colour mode gives the truest print match; sRGB is fine if that's not possible.</li>
               <li>Keep a small <strong>bleed</strong> (2mm+) beyond your cut line, and keep key text 2mm inside it.</li>
-              <li>Max file size 50MB.</li>
+              <li>Max file size 10MB.</li>
             </ul>
           </div>
         </div>
@@ -411,10 +420,12 @@
           <div class="ship-note" id="shipNote">Add items to reach £30 for free delivery.</div>
         </div>
 
-        <button class="btn-order" type="button">
-          <span>🛒 Add to basket</span>
+        <button class="btn-order" type="button" id="checkoutBtn">
+          <span id="checkoutBtnLabel">🔒 Checkout — pay now</span>
           <span class="btn-order-total" id="btnOrderTotal">£0.00</span>
         </button>
+        <div class="checkout-note">🔒 Secure payment via Stripe</div>
+        <div class="checkout-msg" id="checkoutMsg"></div>
       </div>
     </div>
   </div>
@@ -513,6 +524,9 @@
   var uploadThumbWrap = document.getElementById('uploadThumbWrap');
   var uploadName   = document.getElementById('uploadName');
   var uploadRemove = document.getElementById('uploadRemove');
+  var checkoutBtn  = document.getElementById('checkoutBtn');
+  var checkoutBtnLabel = document.getElementById('checkoutBtnLabel');
+  var checkoutMsg  = document.getElementById('checkoutMsg');
 
   function fmt(n){ return '£' + n.toFixed(2); }
 
@@ -546,7 +560,9 @@
     if(singleDim){ heightInput.value = widthInput.value; }
   }
 
-  // ---- Logo / artwork upload (preview only, nothing is sent anywhere) ------
+  // ---- Logo / artwork upload -------------------------------------------
+  // Renders a live preview here; the actual File is read straight off
+  // logoInput at checkout time and uploaded to the server then.
   // PNG/JPG/SVG can be rendered straight into the shape preview. PDF and
   // TIFF aren't renderable by a browser <img>/<image>, so those just show a
   // file-type badge — the file itself is still "attached" for the order.
@@ -740,6 +756,56 @@
     if(state.fileName && !state.imagePreviewable){ label += '  ·  ' + state.fileExt + ' attached'; }
     previewCaption.textContent = label;
   }
+
+  // ---- Checkout ----------------------------------------------------------
+  function setCheckoutMessage(text, kind){
+    checkoutMsg.textContent = text || '';
+    checkoutMsg.className = 'checkout-msg' + (text ? ' show' : '') + (kind ? ' ' + kind : '');
+  }
+
+  checkoutBtn.addEventListener('click', function(){
+    checkoutBtn.disabled = true;
+    var originalLabel = checkoutBtnLabel.textContent;
+    checkoutBtnLabel.textContent = 'Redirecting to secure checkout…';
+    setCheckoutMessage('', '');
+
+    var fd = new FormData();
+    fd.append('shape', state.shape);
+    fd.append('widthMM', state.width);
+    fd.append('heightMM', state.height);
+    fd.append('qty', state.qty);
+    fd.append('unit', state.unit);
+    var file = logoInput.files && logoInput.files[0];
+    if(file){ fd.append('artwork', file); }
+
+    fetch('/api/checkout', { method: 'POST', body: fd })
+      .then(function(r){
+        if(!r.ok){
+          return r.json().catch(function(){ return {}; }).then(function(d){
+            throw new Error(d.error || 'Checkout failed. Please try again.');
+          });
+        }
+        return r.json();
+      })
+      .then(function(data){
+        window.location.href = data.url;
+      })
+      .catch(function(err){
+        checkoutBtn.disabled = false;
+        checkoutBtnLabel.textContent = originalLabel;
+        setCheckoutMessage(err.message || 'Something went wrong starting checkout. Please try again.', 'error');
+      });
+  });
+
+  // If we've just come back from Stripe, show the outcome.
+  (function(){
+    var params = new URLSearchParams(window.location.search);
+    if(params.get('success')){
+      setCheckoutMessage('✅ Payment received — thanks! A confirmation has been sent and we’ll get printing.', 'success');
+    } else if(params.get('canceled')){
+      setCheckoutMessage('Checkout canceled — your sticker setup is still here whenever you’re ready.', 'info');
+    }
+  })();
 
   // ---- init ----------------------------------------------------------------
   applyShapeUI();

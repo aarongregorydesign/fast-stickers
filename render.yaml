@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: fast-stickers
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: "Fast Stickers <onboarding@resend.dev>"
+      - key: NOTIFY_EMAIL
+        value: aaron@aarongregorydesign.com
