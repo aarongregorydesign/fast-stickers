@@ -267,6 +267,7 @@
 
   /* Preview panel */
   .preview-stage{
+    position:relative;
     flex:1;display:flex;align-items:center;justify-content:center;
     min-height:220px;
   }
@@ -275,6 +276,13 @@
   }
   #shapePreview.has-image{cursor:grab;}
   #shapePreview.has-image.dragging{cursor:grabbing;}
+  .qty-badge{
+    position:absolute;right:4px;bottom:0;
+    font-size:24px;font-weight:900;color:#ffd23f;letter-spacing:-0.02em;
+    transform:rotate(-10deg);
+    text-shadow:-1.5px -1.5px 0 var(--ink),1.5px -1.5px 0 var(--ink),-1.5px 1.5px 0 var(--ink),1.5px 1.5px 0 var(--ink),3px 3px 0 rgba(0,0,0,.45);
+    pointer-events:none;
+  }
   .preview-caption{text-align:center;font-size:13px;color:rgba(255,255,255,.6);margin-top:14px;font-weight:600;}
 
   .adjust-panel{
@@ -404,7 +412,7 @@
       </div>
     </div>
     <div class="hero-art">
-      <div class="sticker-float s1">50%<br>OFF*</div>
+      <div class="sticker-float s1">ANY<br>SHAPE</div>
       <div class="sticker-float s2">WOOF</div>
       <div class="sticker-float s3"></div>
       <div class="sticker-float s4">★★★★★</div>
@@ -507,6 +515,7 @@
       <div class="config-preview">
         <div class="preview-stage">
           <svg id="shapePreview" width="220" height="220" viewBox="0 0 220 220"></svg>
+          <span class="qty-badge" id="qtyBadge">×1</span>
         </div>
         <div class="preview-caption" id="previewCaption">80mm × 80mm square</div>
 
@@ -638,6 +647,7 @@
   var customNote   = document.getElementById('customNote');
   var previewSvg   = document.getElementById('shapePreview');
   var previewCaption = document.getElementById('previewCaption');
+  var qtyBadge = document.getElementById('qtyBadge');
   var rowSubtotalLabel = document.getElementById('rowSubtotalLabel');
   var rowSubtotal = document.getElementById('rowSubtotal');
   var rowShip = document.getElementById('rowShip');
@@ -694,7 +704,14 @@
                             : state.shape === 'square' ? 'Size'
                             : 'Width';
     customNote.style.display = state.shape === 'custom' ? 'block' : 'none';
-    if(singleDim){ heightInput.value = widthInput.value; }
+    if(singleDim){
+      heightInput.value = widthInput.value;
+    } else if(parseFloat(heightInput.value) === parseFloat(widthInput.value)){
+      // Coming from a single-dimension shape (or any equal W/H), nudge the
+      // height so a rectangle/oval actually reads as one, not a square.
+      var w = parseFloat(widthInput.value) || 80;
+      heightInput.value = Math.round(w * 0.6 * 100) / 100;
+    }
   }
 
   // ---- Logo / artwork upload -------------------------------------------
@@ -902,6 +919,7 @@
     var total = Math.round((priced + shipping) * 100) / 100;
 
     rowSubtotalLabel.textContent = 'Stickers (' + state.qty + '×)';
+    qtyBadge.textContent = '×' + state.qty;
     rowSubtotal.textContent = fmt(priced);
     rowShip.textContent = shipping === 0 ? 'Free' : fmt(shipping);
     rowTotal.textContent = fmt(total);
@@ -940,7 +958,11 @@
     var w = state.width, h = state.height;
     var box = 180; // px available inside the 220x220 svg
     var scale = box / Math.max(w, h);
-    var pw = w * scale, ph = h * scale;
+    // At extreme aspect ratios (e.g. 10mm x 1300mm) the short side can scale
+    // down to a near-invisible sliver — floor it to a minimum visible size
+    // so the preview still reads as a shape rather than a hairline.
+    var minPx = 14;
+    var pw = Math.max(w * scale, minPx), ph = Math.max(h * scale, minPx);
     var x = (220 - pw) / 2, y = (220 - ph) / 2;
 
     var geo = shapeGeometry(pw, ph, x, y);
