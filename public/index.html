@@ -166,7 +166,7 @@
   }
   .config-form{padding:40px;}
   .config-preview{
-    background:var(--ink);color:#fff;padding:40px;
+    background:var(--brand);color:#fff;padding:40px;
     display:flex;flex-direction:column;
   }
   .field{margin-bottom:26px;}
@@ -287,6 +287,7 @@
     pointer-events:none;
   }
   .preview-caption{text-align:center;font-size:13px;color:rgba(255,255,255,.6);margin-top:14px;font-weight:600;}
+  .preview-disclaimer{text-align:center;font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4;}
 
   .adjust-panel{
     display:none;margin-top:16px;padding:14px 16px;
@@ -416,7 +417,7 @@
     </div>
     <div class="hero-art">
       <div class="sticker-float s1">ANY<br>SHAPE</div>
-      <div class="sticker-float s2">WOOF</div>
+      <div class="sticker-float s2">MOOD</div>
       <div class="sticker-float s3"></div>
       <div class="sticker-float s4">★★★★★</div>
     </div>
@@ -441,8 +442,8 @@
             <div class="shape-opt" data-shape="circle"><div class="swatch"></div><span>Circle</span></div>
             <div class="shape-opt" data-shape="oval"><div class="swatch"></div><span>Oval</span></div>
             <div class="shape-opt" data-shape="custom">
-              <svg class="swatch swatch-custom" width="34" height="34" viewBox="0 0 34 34">
-                <polygon points="17,2 32,13 26,32 8,32 2,13" fill="#c9a7ff" stroke="#16181d" stroke-width="2.5" stroke-linejoin="round"/>
+              <svg class="swatch swatch-custom" width="34" height="34" viewBox="0 0 220 220">
+                <path d="M 52,45 C 116,8 202,33 193,83 C 185,120 165,168 97,161 C 44,155 0,123 26,78 C 33,54 31,48 52,45 Z" fill="#c9a7ff" stroke="#16181d" stroke-width="14" stroke-linejoin="round"/>
               </svg>
               <span>Custom shape</span>
             </div>
@@ -521,6 +522,7 @@
           <span class="qty-badge" id="qtyBadge">×1</span>
         </div>
         <div class="preview-caption" id="previewCaption">80mm × 80mm square</div>
+        <div class="preview-disclaimer">Every sticker is die-cut to its exact shape. This preview is illustrative — your order is manufactured to the precise size and shape you specify, not literally to scale.</div>
 
         <div class="adjust-panel" id="adjustPanel">
           <div class="adjust-head">
@@ -953,11 +955,18 @@
       return { tag: 'ellipse', attrs: 'cx="110" cy="110" rx="' + (pw/2) + '" ry="' + (ph/2) + '"' };
     }
     if(state.shape === 'custom'){
-      var d = 'M ' + (x+pw*0.5) + ' ' + y +
-              ' L ' + (x+pw) + ' ' + (y+ph*0.35) +
-              ' L ' + (x+pw*0.8) + ' ' + (y+ph) +
-              ' L ' + (x+pw*0.15) + ' ' + (y+ph) +
-              ' L ' + x + ' ' + (y+ph*0.35) + ' Z';
+      // Custom shapes are die-cut around irregular artwork (a photo, a logo
+      // outline, whatever you send us) — illustrated here as a sample organic
+      // contour rather than a plain polygon stretched to your width/height,
+      // since literally scaling an arbitrary outline to an aspect ratio
+      // wouldn't mean anything. pw/ph/x/y are fixed for this shape (see
+      // updatePreview), so this renders the same regardless of entered size.
+      var d = 'M ' + (x+pw*0.20) + ' ' + (y+ph*0.20) +
+              ' C ' + (x+pw*0.55) + ' ' + (y+ph*-0.05) + ', ' + (x+pw*1.02) + ' ' + (y+ph*0.12) + ', ' + (x+pw*0.97) + ' ' + (y+ph*0.45) +
+              ' C ' + (x+pw*0.93) + ' ' + (y+ph*0.70) + ', ' + (x+pw*0.82) + ' ' + (y+ph*1.02) + ', ' + (x+pw*0.45) + ' ' + (y+ph*0.97) +
+              ' C ' + (x+pw*0.16) + ' ' + (y+ph*0.93) + ', ' + (x+pw*-0.08) + ' ' + (y+ph*0.72) + ', ' + (x+pw*0.06) + ' ' + (y+ph*0.42) +
+              ' C ' + (x+pw*0.10) + ' ' + (y+ph*0.26) + ', ' + (x+pw*0.09) + ' ' + (y+ph*0.22) + ', ' + (x+pw*0.20) + ' ' + (y+ph*0.20) +
+              ' Z';
       return { tag: 'path', attrs: 'd="' + d + '"' };
     }
     return { tag: 'rect', attrs: 'x="' + x + '" y="' + y + '" width="' + pw + '" height="' + ph + '"' };
@@ -973,6 +982,13 @@
     var minPx = 14;
     var pw = Math.max(w * scale, minPx), ph = Math.max(h * scale, minPx);
     var x = (220 - pw) / 2, y = (220 - ph) / 2;
+
+    // Custom shapes always render at a fixed illustrative size — see the
+    // note in shapeGeometry() for why stretching an arbitrary outline to
+    // the entered width/height wouldn't make sense.
+    if(state.shape === 'custom'){
+      pw = 183; ph = 150; x = 15; y = 15;
+    }
 
     var geo = shapeGeometry(pw, ph, x, y);
     var fillColor = SHAPE_COLORS[state.shape] || '#7ee0c3';
