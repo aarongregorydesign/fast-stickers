@@ -82,7 +82,7 @@ app.post('/api/checkout', upload.single('artwork'), async (req, res) => {
       return res.status(503).json({ error: 'Payments are not configured yet — please check back soon.' });
     }
 
-    const { shape, widthMM, heightMM, qty, unit } = req.body;
+    const { shape, widthMM, heightMM, qty, unit, imageTransform } = req.body;
     if (!VALID_SHAPES.includes(shape)) {
       return res.status(400).json({ error: 'Invalid shape' });
     }
@@ -100,6 +100,7 @@ app.post('/api/checkout', upload.single('artwork'), async (req, res) => {
       subtotal: priced.subtotal,
       shipping: priced.shipping,
       total: priced.total,
+      imageTransform: parseImageTransform(imageTransform),
       file: req.file
         ? { buffer: req.file.buffer, originalname: req.file.originalname, mimetype: req.file.mimetype }
         : null,
@@ -135,6 +136,43 @@ app.post('/api/checkout', upload.single('artwork'), async (req, res) => {
   }
 });
 
+// The client sends how the customer positioned their design in the preview
+// (zoom/rotate/flip/pan) as a JSON string. Parse it defensively — never trust
+// client input — and clamp everything to sane ranges.
+function parseImageTransform(raw) {
+  if (!raw) return null;
+  let t;
+  try {
+    t = JSON.parse(raw);
+  } catch (err) {
+    return null;
+  }
+  const num = (v, fallback) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+  return {
+    scale: Math.max(0.1, Math.min(10, num(t.scale, 1))),
+    rotate: ((num(t.rotate, 0) % 360) + 360) % 360,
+    flipX: num(t.flipX, 1) < 0 ? -1 : 1,
+    flipY: num(t.flipY, 1) < 0 ? -1 : 1,
+    panX: Math.max(-2000, Math.min(2000, num(t.panX, 0))),
+    panY: Math.max(-2000, Math.min(2000, num(t.panY, 0))),
+  };
+}
+
+// Human-readable summary for the order email — only mentions adjustments
+// that actually differ from the default, so a plain upload stays silent.
+function describeImageTransform(t) {
+  if (!t) return null;
+  const parts = [];
+  if (Math.round(t.scale * 100) !== 100) parts.push(`zoom ${Math.round(t.scale * 100)}%`);
+  if (Math.round(t.rotate) !== 0) parts.push(`rotated ${Math.round(t.rotate)}°`);
+  if (t.flipX < 0) parts.push('flipped horizontally');
+  if (t.flipY < 0) parts.push('flipped vertically');
+  if (Math.round(t.panX) !== 0 || Math.round(t.panY) !== 0) {
+    parts.push(`repositioned (x${t.panX >= 0 ? '+' : ''}${Math.round(t.panX)}, y${t.panY >= 0 ? '+' : ''}${Math.round(t.panY)})`);
+  }
+  return parts.length ? parts.join(', ') : null;
+}
+
 async function sendOrderNotification(session, order) {
   if (!resend) {
     console.error('RESEND_API_KEY not set — skipping order email. Order data:', order);
@@ -148,6 +186,7 @@ async function sendOrderNotification(session, order) {
     ? [addr.line1, addr.line2, addr.city, addr.postal_code, addr.country].filter(Boolean).join(', ')
     : 'Not provided';
 
+  const transformNote = order && describeImageTransform(order.imageTransform);
   const orderLines = order
     ? [
         `Shape: ${order.shape}`,
@@ -156,7 +195,7 @@ async function sendOrderNotification(session, order) {
         `Stickers: £${order.subtotal.toFixed(2)}`,
         `Postage: £${order.shipping.toFixed(2)}`,
         `Total: £${order.total.toFixed(2)}`,
-      ]
+      ].concat(transformNote ? [`Design positioning (from customer's preview): ${transformNote}`] : [])
     : [`Total paid: £${(session.amount_total / 100).toFixed(2)}`, '(order detail lookup expired)'];
 
   const html = `

@@ -1031,6 +1031,12 @@
     fd.append('unit', state.unit);
     var file = logoInput.files && logoInput.files[0];
     if(file){ fd.append('artwork', file); }
+    // How the customer positioned their design in the preview (zoom/rotate/
+    // flip/pan) — passed through so whoever prints the order can match it,
+    // since the uploaded file itself is untouched.
+    if(file && state.imagePreviewable){
+      fd.append('imageTransform', JSON.stringify(state.imageTransform));
+    }
 
     fetch('/api/checkout', { method: 'POST', body: fd })
       .then(function(r){
