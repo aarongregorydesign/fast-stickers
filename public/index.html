@@ -474,7 +474,8 @@
   // ---- Pricing constants -------------------------------------------------
   var SHEET_WIDTH_MM   = 720;   // width of the vinyl roll
   var SIDE_MARGIN_MM   = 5;     // kept clear either side of the roll for cutting
-  var MAX_DIM_MM        = SHEET_WIDTH_MM - (SIDE_MARGIN_MM * 2); // 710mm
+  var MAX_DIM_MM        = SHEET_WIDTH_MM - (SIDE_MARGIN_MM * 2); // 710mm — max across-roll (width) dimension
+  var MAX_LENGTH_MM     = 1300; // max along-roll (height/length) dimension for two-dimension shapes
   var GUTTER_MM         = 5;    // gap left between stickers when nesting on the sheet
   var COST_PER_METRE    = 10;   // £10 per linear metre of full-width roll
   var MARGIN_MULTIPLIER = 2.6;  // 160% margin on top of raw vinyl cost
@@ -611,19 +612,28 @@
   // pricing/geometry, which stay unit-agnostic.
   function readDims(){
     var factor = UNIT_TO_MM[state.unit];
+    var singleDim = (state.shape === 'square' || state.shape === 'circle');
+    // Width is the across-roll dimension, capped at the 710mm roll width.
+    // Height is along-roll and can run much longer, up to MAX_LENGTH_MM,
+    // since the roll feeds out continuously. Single-dimension shapes share
+    // one measurement, so they stay capped at the smaller 710mm limit.
+    var maxH = singleDim ? MAX_DIM_MM : MAX_LENGTH_MM;
     var w = clamp((parseFloat(widthInput.value) || 0) * factor, 1, 99999);
     var h;
-    if(state.shape === 'square' || state.shape === 'circle'){
+    if(singleDim){
       h = w;
     } else {
       h = clamp((parseFloat(heightInput.value) || 0) * factor, 1, 99999);
     }
-    var overMax = (w > MAX_DIM_MM) || (h > MAX_DIM_MM);
+    var overMax = (w > MAX_DIM_MM) || (h > maxH);
     sizeWarn.classList.toggle('show', overMax);
-    sizeWarn.textContent = 'Max dimension is ' + fromMM(MAX_DIM_MM, state.unit) + UNIT_LABEL[state.unit] +
-      ' (710mm on our 720mm roll — a small margin is kept either side for cutting).';
+    sizeWarn.textContent = singleDim
+      ? ('Max size is ' + fromMM(MAX_DIM_MM, state.unit) + UNIT_LABEL[state.unit] +
+         ' — our roll width, with a small margin kept either side for cutting.')
+      : ('Max width is ' + fromMM(MAX_DIM_MM, state.unit) + UNIT_LABEL[state.unit] +
+         ' (roll width); max length is ' + fromMM(MAX_LENGTH_MM, state.unit) + UNIT_LABEL[state.unit] + '.');
     w = clamp(w, 1, MAX_DIM_MM);
-    h = clamp(h, 1, MAX_DIM_MM);
+    h = clamp(h, 1, maxH);
     state.width = w;
     state.height = h;
   }
