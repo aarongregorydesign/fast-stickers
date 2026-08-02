@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fast-stickers.onrender.com/sitemap.xml

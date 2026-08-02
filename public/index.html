@@ -3,7 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fast Stickers — Custom High-Quality Stickers</title>
+<title>Fast Stickers — Custom Die-Cut Stickers, Any Shape, Any Size</title>
+<meta name="description" content="Design custom vinyl stickers online in any shape — square, circle, oval, rectangle or a fully custom cut. Instant pricing, waterproof print, free UK delivery over £30.">
+<meta name="keywords" content="custom stickers, vinyl stickers, die cut stickers, custom shape stickers, sticker printing, waterproof stickers, UK sticker printing">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#ff5a36">
+<link rel="canonical" href="https://fast-stickers.onrender.com/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23ff5a36'/%3E%3Ccircle cx='50' cy='50' r='28' fill='%23fff'/%3E%3C/svg%3E">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fast Stickers">
+<meta property="og:title" content="Fast Stickers — Custom Die-Cut Stickers, Any Shape, Any Size">
+<meta property="og:description" content="Design custom vinyl stickers online in any shape — square, circle, oval, rectangle or a fully custom cut. Instant pricing, waterproof print, free UK delivery over £30.">
+<meta property="og:url" content="https://fast-stickers.onrender.com/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Fast Stickers — Custom Die-Cut Stickers, Any Shape, Any Size">
+<meta name="twitter:description" content="Design custom vinyl stickers online in any shape. Instant pricing, waterproof print, free UK delivery over £30.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Fast Stickers",
+  "url": "https://fast-stickers.onrender.com/",
+  "description": "Custom vinyl sticker printing in any shape — square, circle, oval, rectangle or fully custom cut.",
+  "makesOffer": {
+    "@type": "Offer",
+    "itemOffered": {
+      "@type": "Product",
+      "name": "Custom Vinyl Stickers",
+      "description": "Custom-shaped waterproof vinyl stickers, printed and cut to order in any shape and size.",
+      "brand": { "@type": "Brand", "name": "Fast Stickers" }
+    },
+    "priceCurrency": "GBP",
+    "price": "4.50",
+    "availability": "https://schema.org/InStock"
+  }
+}
+</script>
 <style>
   :root{
     --ink:#16181d;
@@ -46,12 +83,33 @@
 
   /* Hero */
   .hero{
+    position:relative;
     padding:72px 0 56px;
+    overflow:hidden;
     background:
       radial-gradient(1200px 400px at 15% -10%, #ffe3d6 0%, transparent 60%),
       radial-gradient(900px 400px at 100% 0%, #ffe9c9 0%, transparent 55%);
   }
-  .hero-inner{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;}
+  .hero-bg{position:absolute;inset:0;z-index:0;pointer-events:none;}
+  .bg-sticker{
+    position:absolute;border:2px solid var(--ink);opacity:.22;
+  }
+  .bg-sticker.circle{border-radius:50%;}
+  .bg-sticker.square{border-radius:4px;}
+  .bg-sticker.blob{border-radius:38% 62% 55% 45% / 45% 40% 60% 55%;}
+  .bg-s1{width:46px;height:46px;top:6%;left:6%;background:#7ee0c3;transform:rotate(-12deg);}
+  .bg-s2{width:34px;height:34px;top:14%;left:38%;background:#ffd23f;transform:rotate(18deg);}
+  .bg-s3{width:58px;height:58px;top:4%;left:62%;background:#a7c7ff;transform:rotate(-6deg);}
+  .bg-s4{width:30px;height:30px;top:22%;left:88%;background:#ffb4c6;transform:rotate(10deg);}
+  .bg-s5{width:40px;height:40px;top:70%;left:3%;background:#c9a7ff;transform:rotate(20deg);}
+  .bg-s6{width:26px;height:26px;top:82%;left:22%;background:#ffd23f;transform:rotate(-15deg);}
+  .bg-s7{width:52px;height:52px;top:78%;left:47%;background:#7ee0c3;transform:rotate(8deg);}
+  .bg-s8{width:36px;height:36px;top:65%;left:70%;background:#ffb4c6;transform:rotate(-20deg);}
+  .bg-s9{width:44px;height:44px;top:88%;left:92%;background:#a7c7ff;transform:rotate(14deg);}
+  .bg-s10{width:22px;height:22px;top:40%;left:12%;background:#ffd23f;transform:rotate(6deg);}
+  .bg-s11{width:28px;height:28px;top:48%;left:95%;background:#c9a7ff;transform:rotate(-10deg);}
+  .bg-s12{width:32px;height:32px;top:2%;left:22%;background:#ffb4c6;transform:rotate(-25deg);}
+  .hero-inner{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;}
   .eyebrow{
     display:inline-flex;align-items:center;gap:8px;
     background:var(--brand-light);color:var(--brand-dark);
@@ -126,9 +184,9 @@
   }
   .shape-opt:hover .swatch{transform:translate(-1px,-1px);}
   .shape-opt[data-shape="square"] .swatch{border-radius:0;background:#7ee0c3;}
-  .shape-opt[data-shape="rectangle"] .swatch{width:42px;height:28px;border-radius:0;background:#7ee0c3;}
+  .shape-opt[data-shape="rectangle"] .swatch{width:42px;height:28px;border-radius:0;background:#ffb4c6;}
   .shape-opt[data-shape="circle"] .swatch{border-radius:50%;background:#ffd23f;}
-  .shape-opt[data-shape="oval"] .swatch{width:42px;height:28px;border-radius:50%;background:#ffd23f;}
+  .shape-opt[data-shape="oval"] .swatch{width:42px;height:28px;border-radius:50%;background:#a7c7ff;}
   .shape-opt .swatch.swatch-custom{border:none;box-shadow:none;filter:drop-shadow(3px 3px 0 rgba(22,24,29,.9));}
   .shape-opt span{font-size:12.5px;font-weight:700;}
 
@@ -215,7 +273,32 @@
   #shapePreview{
     background:#fff8f2;border:2px dashed rgba(255,255,255,.35);
   }
+  #shapePreview.has-image{cursor:grab;}
+  #shapePreview.has-image.dragging{cursor:grabbing;}
   .preview-caption{text-align:center;font-size:13px;color:rgba(255,255,255,.6);margin-top:14px;font-weight:600;}
+
+  .adjust-panel{
+    display:none;margin-top:16px;padding:14px 16px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:12px;
+  }
+  .adjust-panel.show{display:block;}
+  .adjust-head{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:10px;}
+  .adjust-reset{
+    background:none;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.7);
+    border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;
+  }
+  .adjust-reset:hover{border-color:rgba(255,255,255,.5);color:#fff;}
+  .adjust-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .adjust-row:last-of-type{margin-bottom:0;}
+  .adjust-label{width:42px;flex:none;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);}
+  .adjust-row input[type="range"]{flex:1;accent-color:var(--brand);}
+  .adjust-buttons{display:flex;gap:8px;margin-top:10px;}
+  .adjust-buttons button{
+    flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;
+    border-radius:8px;padding:8px;font-size:11.5px;font-weight:700;cursor:pointer;
+  }
+  .adjust-buttons button:hover{background:rgba(255,255,255,.15);}
+  .adjust-panel .hint{margin-top:10px;font-size:11px;color:rgba(255,255,255,.45);text-align:center;}
 
   .price-box{
     margin-top:28px;background:#fff;color:var(--ink);border:2px solid var(--ink);border-radius:16px;
@@ -291,6 +374,20 @@
 </header>
 
 <section class="hero">
+  <div class="hero-bg" aria-hidden="true">
+    <span class="bg-sticker square bg-s1"></span>
+    <span class="bg-sticker circle bg-s2"></span>
+    <span class="bg-sticker blob bg-s3"></span>
+    <span class="bg-sticker circle bg-s4"></span>
+    <span class="bg-sticker blob bg-s5"></span>
+    <span class="bg-sticker square bg-s6"></span>
+    <span class="bg-sticker circle bg-s7"></span>
+    <span class="bg-sticker square bg-s8"></span>
+    <span class="bg-sticker blob bg-s9"></span>
+    <span class="bg-sticker circle bg-s10"></span>
+    <span class="bg-sticker square bg-s11"></span>
+    <span class="bg-sticker blob bg-s12"></span>
+  </div>
   <div class="wrap hero-inner">
     <div>
       <span class="eyebrow">● Printed &amp; dispatched fast</span>
@@ -334,7 +431,7 @@
             <div class="shape-opt" data-shape="oval"><div class="swatch"></div><span>Oval</span></div>
             <div class="shape-opt" data-shape="custom">
               <svg class="swatch swatch-custom" width="34" height="34" viewBox="0 0 34 34">
-                <polygon points="17,2 32,13 26,32 8,32 2,13" fill="#a7c7ff" stroke="#16181d" stroke-width="2.5" stroke-linejoin="round"/>
+                <polygon points="17,2 32,13 26,32 8,32 2,13" fill="#c9a7ff" stroke="#16181d" stroke-width="2.5" stroke-linejoin="round"/>
               </svg>
               <span>Custom shape</span>
             </div>
@@ -412,6 +509,26 @@
           <svg id="shapePreview" width="220" height="220" viewBox="0 0 220 220"></svg>
         </div>
         <div class="preview-caption" id="previewCaption">80mm × 80mm square</div>
+
+        <div class="adjust-panel" id="adjustPanel">
+          <div class="adjust-head">
+            <span>Adjust your design</span>
+            <button type="button" id="imgReset" class="adjust-reset">Reset</button>
+          </div>
+          <div class="adjust-row">
+            <span class="adjust-label">Zoom</span>
+            <input type="range" id="imgZoom" min="50" max="250" value="100">
+          </div>
+          <div class="adjust-row">
+            <span class="adjust-label">Rotate</span>
+            <input type="range" id="imgRotate" min="0" max="360" value="0">
+          </div>
+          <div class="adjust-buttons">
+            <button type="button" id="imgFlipH">⇋ Flip horizontal</button>
+            <button type="button" id="imgFlipV">⇵ Flip vertical</button>
+          </div>
+          <div class="hint">Drag your design in the preview above to reposition it.</div>
+        </div>
 
         <div class="price-box">
           <div class="price-row"><span id="rowSubtotalLabel">Stickers (1×)</span><strong id="rowSubtotal">£0.00</strong></div>
@@ -495,8 +612,15 @@
   var PREVIEWABLE_TYPES = /^image\/(png|jpeg|svg\+xml)$/;
   var PREVIEWABLE_EXT = /\.(png|jpe?g|svg)$/i;
 
+  // Each shape gets its own distinct colour, matching the shape picker icons.
+  var SHAPE_COLORS = { square: '#7ee0c3', rectangle: '#ffb4c6', circle: '#ffd23f', oval: '#a7c7ff', custom: '#c9a7ff' };
+
   // ---- State ---------------------------------------------------------------
-  var state = { shape: 'square', width: 80, height: 80, qty: 1, unit: 'mm', image: null, imagePreviewable: false, fileName: '', fileExt: '' };
+  var state = {
+    shape: 'square', width: 80, height: 80, qty: 1, unit: 'mm',
+    image: null, imagePreviewable: false, fileName: '', fileExt: '',
+    imageTransform: { scale: 1, rotate: 0, flipX: 1, flipY: 1, panX: 0, panY: 0 }
+  };
 
   // ---- Elements --------------------------------------------------------
   var shapeGrid    = document.getElementById('shapeGrid');
@@ -528,6 +652,12 @@
   var checkoutBtn  = document.getElementById('checkoutBtn');
   var checkoutBtnLabel = document.getElementById('checkoutBtnLabel');
   var checkoutMsg  = document.getElementById('checkoutMsg');
+  var adjustPanel  = document.getElementById('adjustPanel');
+  var imgZoom      = document.getElementById('imgZoom');
+  var imgRotate    = document.getElementById('imgRotate');
+  var imgFlipH     = document.getElementById('imgFlipH');
+  var imgFlipV     = document.getElementById('imgFlipV');
+  var imgReset     = document.getElementById('imgReset');
 
   function fmt(n){ return '£' + n.toFixed(2); }
 
@@ -540,14 +670,20 @@
   }
 
   // ---- Shape selection ---------------------------------------------------
+  function selectShape(shape){
+    state.shape = shape;
+    Array.prototype.forEach.call(shapeGrid.children, function(c){
+      c.classList.toggle('active', c.getAttribute('data-shape') === shape);
+    });
+    applyShapeUI();
+    readDims();
+    recalc();
+  }
+
   shapeGrid.addEventListener('click', function(e){
     var opt = e.target.closest('.shape-opt');
     if(!opt) return;
-    Array.prototype.forEach.call(shapeGrid.children, function(c){ c.classList.remove('active'); });
-    opt.classList.add('active');
-    state.shape = opt.getAttribute('data-shape');
-    applyShapeUI();
-    recalc();
+    selectShape(opt.getAttribute('data-shape'));
   });
 
   function applyShapeUI(){
@@ -571,6 +707,12 @@
     if(e.target === uploadRemove) return;
     logoInput.click();
   });
+  function resetImageTransform(){
+    state.imageTransform = { scale: 1, rotate: 0, flipX: 1, flipY: 1, panX: 0, panY: 0 };
+    imgZoom.value = 100;
+    imgRotate.value = 0;
+  }
+
   logoInput.addEventListener('change', function(){
     var file = logoInput.files && logoInput.files[0];
     if(!file) return;
@@ -581,19 +723,25 @@
     state.imagePreviewable = previewable;
     uploadName.textContent = file.name;
     uploadBox.classList.add('has-image');
+    resetImageTransform();
 
     if(previewable){
       var reader = new FileReader();
       reader.onload = function(ev){
         state.image = ev.target.result;
-        uploadThumbWrap.innerHTML = '<img src="' + state.image + '" alt="">';
-        recalc();
+        uploadThumbWrap.innerHTML = '<img src="' + state.image + '" alt="Uploaded design thumbnail">';
+        previewSvg.classList.add('has-image');
+        adjustPanel.classList.add('show');
+        // A freshly-uploaded design becomes a custom-cut sticker by default.
+        selectShape('custom');
       };
       reader.readAsDataURL(file);
     } else {
       state.image = null;
       uploadThumbWrap.innerHTML = '<div class="file-badge">' + ext + '</div>';
-      recalc();
+      previewSvg.classList.remove('has-image');
+      adjustPanel.classList.remove('show');
+      selectShape('custom');
     }
   });
   uploadRemove.addEventListener('click', function(e){
@@ -602,10 +750,60 @@
     state.imagePreviewable = false;
     state.fileName = '';
     state.fileExt = '';
+    resetImageTransform();
     logoInput.value = '';
     uploadBox.classList.remove('has-image');
+    previewSvg.classList.remove('has-image');
+    adjustPanel.classList.remove('show');
     recalc();
   });
+
+  // ---- Design adjustment: zoom, rotate, flip, pan --------------------------
+  imgZoom.addEventListener('input', function(){
+    state.imageTransform.scale = (parseFloat(imgZoom.value) || 100) / 100;
+    updatePreview();
+  });
+  imgRotate.addEventListener('input', function(){
+    state.imageTransform.rotate = parseFloat(imgRotate.value) || 0;
+    updatePreview();
+  });
+  imgFlipH.addEventListener('click', function(){
+    state.imageTransform.flipX *= -1;
+    updatePreview();
+  });
+  imgFlipV.addEventListener('click', function(){
+    state.imageTransform.flipY *= -1;
+    updatePreview();
+  });
+  imgReset.addEventListener('click', function(){
+    resetImageTransform();
+    updatePreview();
+  });
+
+  // Drag directly on the preview to reposition the design within its shape.
+  var panDragging = false, panStart = null;
+  previewSvg.addEventListener('pointerdown', function(e){
+    if(!(state.image && state.imagePreviewable)) return;
+    panDragging = true;
+    previewSvg.classList.add('dragging');
+    previewSvg.setPointerCapture(e.pointerId);
+    panStart = { x: e.clientX, y: e.clientY, panX: state.imageTransform.panX, panY: state.imageTransform.panY };
+  });
+  previewSvg.addEventListener('pointermove', function(e){
+    if(!panDragging) return;
+    var rect = previewSvg.getBoundingClientRect();
+    var unitsPerPx = 220 / rect.width; // convert screen px to the 220x220 viewBox units
+    state.imageTransform.panX = panStart.panX + (e.clientX - panStart.x) * unitsPerPx;
+    state.imageTransform.panY = panStart.panY + (e.clientY - panStart.y) * unitsPerPx;
+    updatePreview();
+  });
+  function endPanDrag(){
+    if(!panDragging) return;
+    panDragging = false;
+    previewSvg.classList.remove('dragging');
+  }
+  previewSvg.addEventListener('pointerup', endPanDrag);
+  previewSvg.addEventListener('pointercancel', endPanDrag);
 
   // ---- Dimension inputs ----------------------------------------------------
   // Fields are typed in state.unit; everything is converted to mm for
@@ -746,14 +944,26 @@
     var x = (220 - pw) / 2, y = (220 - ph) / 2;
 
     var geo = shapeGeometry(pw, ph, x, y);
-    var fillColor = (state.shape === 'circle' || state.shape === 'oval') ? '#ffd23f'
-                  : state.shape === 'custom' ? '#a7c7ff' : '#7ee0c3';
+    var fillColor = SHAPE_COLORS[state.shape] || '#7ee0c3';
 
     var markup;
     if(state.image && state.imagePreviewable){
+      // Zoom/rotate/flip/pan apply as one transform on a group wrapping the
+      // image, anchored at the shape's own centre so scaling/rotating stays
+      // centred regardless of pan offset.
+      var t = state.imageTransform;
+      var cx = x + pw / 2, cy = y + ph / 2;
+      var transform = 'translate(' + (cx + t.panX) + ' ' + (cy + t.panY) + ') ' +
+                       'rotate(' + t.rotate + ') ' +
+                       'scale(' + (t.scale * t.flipX) + ' ' + (t.scale * t.flipY) + ') ' +
+                       'translate(' + (-cx) + ' ' + (-cy) + ')';
       markup = '<defs><clipPath id="shapeClip"><' + geo.tag + ' ' + geo.attrs + ' /></clipPath></defs>' +
-               '<image href="' + state.image + '" x="' + x + '" y="' + y + '" width="' + pw + '" height="' + ph +
-               '" preserveAspectRatio="xMidYMid slice" clip-path="url(#shapeClip)" />' +
+               '<g clip-path="url(#shapeClip)">' +
+                 '<g transform="' + transform + '">' +
+                   '<image href="' + state.image + '" x="' + x + '" y="' + y + '" width="' + pw + '" height="' + ph +
+                   '" preserveAspectRatio="xMidYMid slice" />' +
+                 '</g>' +
+               '</g>' +
                '<' + geo.tag + ' ' + geo.attrs + ' fill="none" stroke="#16181d" stroke-width="3"/>';
     } else {
       markup = '<' + geo.tag + ' ' + geo.attrs + ' fill="' + fillColor + '" stroke="#16181d" stroke-width="3"/>';
