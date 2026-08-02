@@ -685,10 +685,13 @@
     var rawCost = (lengthMM / 1000) * COST_PER_METRE;
     // A £4.50 floor keeps a one-off small run from pricing out at pennies —
     // there's always a real minimum cost to setting up and cutting a job.
-    var priced = Math.max(rawCost * MARGIN_MULTIPLIER, MIN_ORDER_PRICE);
+    // Round the subtotal first, then derive shipping/total from that rounded
+    // value — summing already-rounded figures guarantees the displayed
+    // subtotal + shipping always matches the displayed total exactly.
+    var priced = Math.round(Math.max(rawCost * MARGIN_MULTIPLIER, MIN_ORDER_PRICE) * 100) / 100;
 
     var shipping = priced >= FREE_DELIVERY_AT ? 0 : FLAT_POSTAGE;
-    var total = priced + shipping;
+    var total = Math.round((priced + shipping) * 100) / 100;
 
     rowSubtotalLabel.textContent = 'Stickers (' + state.qty + '×)';
     rowSubtotal.textContent = fmt(priced);
