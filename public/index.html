@@ -274,16 +274,16 @@
     flex:1;display:flex;align-items:center;justify-content:center;
     min-height:220px;
   }
-  #shapePreview{
-    background:#fff8f2;border:2px dashed rgba(255,255,255,.35);
-  }
   #shapePreview.has-image{cursor:grab;}
   #shapePreview.has-image.dragging{cursor:grabbing;}
   .qty-badge{
-    position:absolute;right:-14px;bottom:-16px;
+    position:absolute;right:-10px;bottom:-14px;
     font-size:40px;font-weight:900;color:#ffd23f;letter-spacing:-0.02em;
     transform:rotate(-10deg);
-    text-shadow:-2px -2px 0 var(--ink),2px -2px 0 var(--ink),-2px 2px 0 var(--ink),2px 2px 0 var(--ink),4px 4px 0 rgba(0,0,0,.45);
+    -webkit-text-stroke:5px var(--ink);
+    text-stroke:5px var(--ink);
+    paint-order:stroke fill;
+    text-shadow:5px 5px 0 rgba(0,0,0,.4);
     pointer-events:none;
   }
   .preview-caption{text-align:center;font-size:13px;color:rgba(255,255,255,.6);margin-top:14px;font-weight:600;}
@@ -443,7 +443,7 @@
             <div class="shape-opt" data-shape="oval"><div class="swatch"></div><span>Oval</span></div>
             <div class="shape-opt" data-shape="custom">
               <svg class="swatch swatch-custom" width="34" height="34" viewBox="0 0 220 220">
-                <path d="M 52,45 C 116,8 202,33 193,83 C 185,120 165,168 97,161 C 44,155 0,123 26,78 C 33,54 31,48 52,45 Z" fill="#c9a7ff" stroke="#16181d" stroke-width="14" stroke-linejoin="round"/>
+                <path d="M 106.5,21 C 150.4,15 192.5,39 188.9,70.5 C 186,88.5 170.6,96 163.2,106.5 C 190.7,114 201.7,139.5 172.4,156 C 144.9,169.5 117.5,151.5 99.2,148.5 C 80.9,145.5 44.3,162 24.2,139.5 C 7.7,117 33.3,100.5 51.6,91.5 C 26,81 5.9,55.5 33.3,36 C 57.1,18 84.5,28.5 106.5,21 Z" fill="#c9a7ff" stroke="#16181d" stroke-width="14" stroke-linejoin="round"/>
               </svg>
               <span>Custom shape</span>
             </div>
@@ -957,15 +957,20 @@
     if(state.shape === 'custom'){
       // Custom shapes are die-cut around irregular artwork (a photo, a logo
       // outline, whatever you send us) — illustrated here as a sample organic
-      // contour rather than a plain polygon stretched to your width/height,
-      // since literally scaling an arbitrary outline to an aspect ratio
-      // wouldn't mean anything. pw/ph/x/y are fixed for this shape (see
-      // updatePreview), so this renders the same regardless of entered size.
-      var d = 'M ' + (x+pw*0.20) + ' ' + (y+ph*0.20) +
-              ' C ' + (x+pw*0.55) + ' ' + (y+ph*-0.05) + ', ' + (x+pw*1.02) + ' ' + (y+ph*0.12) + ', ' + (x+pw*0.97) + ' ' + (y+ph*0.45) +
-              ' C ' + (x+pw*0.93) + ' ' + (y+ph*0.70) + ', ' + (x+pw*0.82) + ' ' + (y+ph*1.02) + ', ' + (x+pw*0.45) + ' ' + (y+ph*0.97) +
-              ' C ' + (x+pw*0.16) + ' ' + (y+ph*0.93) + ', ' + (x+pw*-0.08) + ' ' + (y+ph*0.72) + ', ' + (x+pw*0.06) + ' ' + (y+ph*0.42) +
-              ' C ' + (x+pw*0.10) + ' ' + (y+ph*0.26) + ', ' + (x+pw*0.09) + ' ' + (y+ph*0.22) + ', ' + (x+pw*0.20) + ' ' + (y+ph*0.20) +
+      // multi-lobed contour rather than a plain polygon stretched to your
+      // width/height, since literally scaling an arbitrary outline to an
+      // aspect ratio wouldn't mean anything. pw/ph/x/y are fixed for this
+      // shape (see updatePreview), so this renders the same regardless of
+      // entered size.
+      var d = 'M ' + (x+pw*0.50) + ' ' + (y+ph*0.04) +
+              ' C ' + (x+pw*0.74) + ' ' + (y+ph*0.00) + ', ' + (x+pw*0.97) + ' ' + (y+ph*0.16) + ', ' + (x+pw*0.95) + ' ' + (y+ph*0.37) +
+              ' C ' + (x+pw*0.94) + ' ' + (y+ph*0.49) + ', ' + (x+pw*0.85) + ' ' + (y+ph*0.54) + ', ' + (x+pw*0.81) + ' ' + (y+ph*0.61) +
+              ' C ' + (x+pw*0.96) + ' ' + (y+ph*0.66) + ', ' + (x+pw*1.02) + ' ' + (y+ph*0.83) + ', ' + (x+pw*0.86) + ' ' + (y+ph*0.94) +
+              ' C ' + (x+pw*0.71) + ' ' + (y+ph*1.03) + ', ' + (x+pw*0.56) + ' ' + (y+ph*0.91) + ', ' + (x+pw*0.46) + ' ' + (y+ph*0.89) +
+              ' C ' + (x+pw*0.36) + ' ' + (y+ph*0.87) + ', ' + (x+pw*0.16) + ' ' + (y+ph*0.98) + ', ' + (x+pw*0.05) + ' ' + (y+ph*0.83) +
+              ' C ' + (x+pw*-0.04) + ' ' + (y+ph*0.68) + ', ' + (x+pw*0.10) + ' ' + (y+ph*0.57) + ', ' + (x+pw*0.20) + ' ' + (y+ph*0.51) +
+              ' C ' + (x+pw*0.06) + ' ' + (y+ph*0.44) + ', ' + (x+pw*-0.05) + ' ' + (y+ph*0.27) + ', ' + (x+pw*0.10) + ' ' + (y+ph*0.14) +
+              ' C ' + (x+pw*0.23) + ' ' + (y+ph*0.02) + ', ' + (x+pw*0.38) + ' ' + (y+ph*0.09) + ', ' + (x+pw*0.50) + ' ' + (y+ph*0.04) +
               ' Z';
       return { tag: 'path', attrs: 'd="' + d + '"' };
     }
@@ -993,6 +998,13 @@
     var geo = shapeGeometry(pw, ph, x, y);
     var fillColor = SHAPE_COLORS[state.shape] || '#7ee0c3';
 
+    // Real die-cut vinyl stickers get a thin white laminate edge that hugs
+    // the exact cut contour, not a rectangular backing card — so instead of
+    // a white box behind the shape, draw the same shape again underneath,
+    // padded outward with a thick white stroke, to fake that offset border.
+    var haloJoin = (state.shape === 'square' || state.shape === 'rectangle') ? 'miter' : 'round';
+    var halo = '<' + geo.tag + ' ' + geo.attrs + ' fill="#ffffff" stroke="#ffffff" stroke-width="16" stroke-linejoin="' + haloJoin + '"/>';
+
     var markup;
     if(state.image && state.imagePreviewable){
       // Zoom/rotate/flip/pan apply as one transform on a group wrapping the
@@ -1004,7 +1016,8 @@
                        'rotate(' + t.rotate + ') ' +
                        'scale(' + (t.scale * t.flipX) + ' ' + (t.scale * t.flipY) + ') ' +
                        'translate(' + (-cx) + ' ' + (-cy) + ')';
-      markup = '<defs><clipPath id="shapeClip"><' + geo.tag + ' ' + geo.attrs + ' /></clipPath></defs>' +
+      markup = halo +
+               '<defs><clipPath id="shapeClip"><' + geo.tag + ' ' + geo.attrs + ' /></clipPath></defs>' +
                '<g clip-path="url(#shapeClip)">' +
                  '<g transform="' + transform + '">' +
                    '<image href="' + state.image + '" x="' + x + '" y="' + y + '" width="' + pw + '" height="' + ph +
@@ -1013,7 +1026,7 @@
                '</g>' +
                '<' + geo.tag + ' ' + geo.attrs + ' fill="none" stroke="#16181d" stroke-width="3"/>';
     } else {
-      markup = '<' + geo.tag + ' ' + geo.attrs + ' fill="' + fillColor + '" stroke="#16181d" stroke-width="3"/>';
+      markup = halo + '<' + geo.tag + ' ' + geo.attrs + ' fill="' + fillColor + '" stroke="#16181d" stroke-width="3"/>';
     }
     previewSvg.innerHTML = markup;
 
