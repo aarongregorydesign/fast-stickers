@@ -76,7 +76,12 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.post('/api/checkout', upload.single('artwork'), async (req, res) => {
+const uploadFields = upload.fields([
+  { name: 'artwork', maxCount: 1 },
+  { name: 'designProof', maxCount: 1 },
+]);
+
+app.post('/api/checkout', uploadFields, async (req, res) => {
   try {
     if (!stripe) {
       return res.status(503).json({ error: 'Payments are not configured yet — please check back soon.' });
@@ -90,6 +95,9 @@ app.post('/api/checkout', upload.single('artwork'), async (req, res) => {
     // Authoritative price — never trust a total sent by the client.
     const priced = priceOrder({ shape, widthMM, heightMM, qty });
 
+    const artworkFile = req.files && req.files.artwork && req.files.artwork[0];
+    const proofFile = req.files && req.files.designProof && req.files.designProof[0];
+
     const orderId = crypto.randomUUID();
     pendingOrders.set(orderId, {
       shape,
@@ -101,9 +109,12 @@ app.post('/api/checkout', upload.single('artwork'), async (req, res) => {
       shipping: priced.shipping,
       total: priced.total,
       imageTransform: parseImageTransform(imageTransform),
-      file: req.file
-        ? { buffer: req.file.buffer, originalname: req.file.originalname, mimetype: req.file.mimetype }
+      file: artworkFile
+        ? { buffer: artworkFile.buffer, originalname: artworkFile.originalname, mimetype: artworkFile.mimetype }
         : null,
+      // A snapshot of exactly what the customer approved on-screen — the
+      // "design proof" — separate from the original artwork file itself.
+      proof: proofFile ? { buffer: proofFile.buffer, mimetype: proofFile.mimetype } : null,
       createdAt: Date.now(),
     });
 
@@ -203,6 +214,7 @@ async function sendOrderNotification(session, order) {
     <p><strong>Customer:</strong> ${customerEmail || 'unknown'}</p>
     <p><strong>Shipping address:</strong> ${addressLines}</p>
     <p>${orderLines.join('<br>')}</p>
+    ${order && order.proof ? '<p>Design proof attached — this is exactly what the customer approved before paying.</p>' : ''}
     <p style="color:#888;font-size:12px;">Stripe session: ${session.id}</p>
   `;
 
@@ -213,6 +225,12 @@ async function sendOrderNotification(session, order) {
       content: order.file.buffer.toString('base64'),
     });
   }
+  if (order && order.proof) {
+    attachments.push({
+      filename: 'design-proof.png',
+      content: order.proof.buffer.toString('base64'),
+    });
+  }
 
   await resend.emails.send({
     from: RESEND_FROM,
@@ -221,6 +239,27 @@ async function sendOrderNotification(session, order) {
     html,
     attachments,
   });
+
+  // Also send the customer their own copy of the design proof they approved,
+  // as a record of exactly what's being printed.
+  if (customerEmail && order && order.proof) {
+    try {
+      await resend.emails.send({
+        from: RESEND_FROM,
+        to: customerEmail,
+        subject: 'Your Fast Stickers order — design proof',
+        html: `
+          <h2>Thanks for your order!</h2>
+          <p>Here's the design proof you approved before checkout — attached as a reference for exactly what we're printing and cutting.</p>
+          <p>Shape: ${order.shape}<br>Size: ${order.widthMM}mm × ${order.heightMM}mm<br>Quantity: ${order.qty}<br>Total: £${order.total.toFixed(2)}</p>
+          <p>If anything here doesn't look right, just reply to this email and we'll sort it out before it goes into production.</p>
+        `,
+        attachments: [{ filename: 'design-proof.png', content: order.proof.buffer.toString('base64') }],
+      });
+    } catch (err) {
+      console.error('Failed to send customer proof email:', err);
+    }
+  }
 }
 
 app.listen(PORT, () => {

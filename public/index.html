@@ -276,15 +276,10 @@
   }
   #shapePreview.has-image{cursor:grab;}
   #shapePreview.has-image.dragging{cursor:grabbing;}
-  .qty-badge{
-    position:absolute;right:-10px;bottom:-14px;
-    font-size:40px;font-weight:900;color:#ffd23f;letter-spacing:-0.02em;
-    transform:rotate(-10deg);
-    -webkit-text-stroke:5px var(--ink);
-    text-stroke:5px var(--ink);
-    paint-order:stroke fill;
-    text-shadow:5px 5px 0 rgba(0,0,0,.4);
-    pointer-events:none;
+  .qty-badge-text{
+    font-size:44px;font-weight:900;fill:#ffd23f;letter-spacing:-2px;
+    stroke:var(--ink);stroke-width:5px;paint-order:stroke fill;
+    font-family:inherit;
   }
   .preview-caption{text-align:center;font-size:13px;color:rgba(255,255,255,.6);margin-top:14px;font-weight:600;}
   .preview-disclaimer{text-align:center;font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4;}
@@ -335,8 +330,13 @@
   }
   .btn-order:hover{background:var(--brand-dark);transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(0,0,0,.5);}
   .btn-order:active{transform:translate(1px,1px);box-shadow:2px 2px 0 rgba(0,0,0,.5);}
-  .btn-order:disabled{opacity:.7;cursor:default;transform:none;box-shadow:4px 4px 0 rgba(0,0,0,.5);}
+  .btn-order:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:4px 4px 0 rgba(0,0,0,.5);}
   .btn-order .btn-order-total{font-weight:800;}
+  .approve-row{
+    display:flex;align-items:flex-start;gap:9px;margin-top:20px;cursor:pointer;
+    font-size:12.5px;color:rgba(255,255,255,.8);font-weight:600;line-height:1.4;
+  }
+  .approve-row input{margin-top:2px;width:16px;height:16px;flex:none;accent-color:var(--accent);cursor:pointer;}
   .checkout-note{text-align:center;font-size:12px;color:rgba(255,255,255,.5);margin-top:10px;font-weight:600;}
   .checkout-msg{
     display:none;margin-top:14px;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;line-height:1.5;text-align:center;
@@ -519,7 +519,6 @@
       <div class="config-preview">
         <div class="preview-stage">
           <svg id="shapePreview" width="220" height="220" viewBox="0 0 220 220"></svg>
-          <span class="qty-badge" id="qtyBadge">×1</span>
         </div>
         <div class="preview-caption" id="previewCaption">80mm × 80mm square</div>
         <div class="preview-disclaimer">Every sticker is die-cut to its exact shape. This preview is illustrative — your order is manufactured to the precise size and shape you specify, not literally to scale.</div>
@@ -551,11 +550,16 @@
           <div class="ship-note" id="shipNote">Add items to reach £30 for free delivery.</div>
         </div>
 
-        <button class="btn-order" type="button" id="checkoutBtn">
+        <label class="approve-row">
+          <input type="checkbox" id="approveDesign">
+          <span>I approve this design proof above for printing exactly as shown.</span>
+        </label>
+
+        <button class="btn-order" type="button" id="checkoutBtn" disabled>
           <span id="checkoutBtnLabel">🔒 Checkout — pay now</span>
           <span class="btn-order-total" id="btnOrderTotal">£0.00</span>
         </button>
-        <div class="checkout-note">🔒 Secure payment via Stripe</div>
+        <div class="checkout-note">🔒 Secure payment via Stripe · a copy of your design proof is emailed to you</div>
         <div class="checkout-msg" id="checkoutMsg"></div>
       </div>
     </div>
@@ -633,6 +637,7 @@
   var state = {
     shape: 'square', width: 80, height: 80, qty: 1, unit: 'mm',
     image: null, imagePreviewable: false, fileName: '', fileExt: '',
+    imageContour: null, // { points:[{x,y} 0-1], cw, ch } — the traced silhouette of the uploaded artwork
     imageTransform: { scale: 1, rotate: 0, flipX: 1, flipY: 1, panX: 0, panY: 0 }
   };
 
@@ -652,7 +657,6 @@
   var customNote   = document.getElementById('customNote');
   var previewSvg   = document.getElementById('shapePreview');
   var previewCaption = document.getElementById('previewCaption');
-  var qtyBadge = document.getElementById('qtyBadge');
   var rowSubtotalLabel = document.getElementById('rowSubtotalLabel');
   var rowSubtotal = document.getElementById('rowSubtotal');
   var rowShip = document.getElementById('rowShip');
@@ -667,6 +671,7 @@
   var checkoutBtn  = document.getElementById('checkoutBtn');
   var checkoutBtnLabel = document.getElementById('checkoutBtnLabel');
   var checkoutMsg  = document.getElementById('checkoutMsg');
+  var approveDesign = document.getElementById('approveDesign');
   var adjustPanel  = document.getElementById('adjustPanel');
   var imgZoom      = document.getElementById('imgZoom');
   var imgRotate    = document.getElementById('imgRotate');
@@ -682,6 +687,122 @@
   function fromMM(mmVal, unit){
     var v = mmVal / UNIT_TO_MM[unit];
     return Math.round(v * 100) / 100;
+  }
+
+  // ---- Image contour detection ----------------------------------------
+  // For Custom shape, we don't clip the artwork into a generic geometric
+  // shape — we detect where the artwork itself actually is (its alpha
+  // silhouette for a transparent PNG, or its own rectangle for an opaque
+  // photo/JPEG) and cut around THAT, like a real contour-cut sticker.
+  var CONTOUR_GRID = 100; // working resolution for the trace — small enough to be fast, big enough to hold detail
+  var ALPHA_THRESHOLD = 20;
+
+  function traceImageContour(dataUrl, callback){
+    var img = new Image();
+    img.onload = function(){
+      try {
+        var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+        if(!iw || !ih){ callback(null); return; }
+        var scale = CONTOUR_GRID / Math.max(iw, ih);
+        var cw = Math.max(1, Math.round(iw * scale)), ch = Math.max(1, Math.round(ih * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, cw, ch);
+        var data = ctx.getImageData(0, 0, cw, ch).data;
+
+        function inside(px, py){
+          if(px < 0 || py < 0 || px >= cw || py >= ch) return false;
+          return data[(py * cw + px) * 4 + 3] > ALPHA_THRESHOLD;
+        }
+
+        // Find a starting boundary pixel via raster scan.
+        var sx = -1, sy = -1;
+        for(var y = 0; y < ch && sx < 0; y++){
+          for(var x = 0; x < cw; x++){
+            if(inside(x, y)){ sx = x; sy = y; break; }
+          }
+        }
+        if(sx < 0){ callback(null); return; } // fully transparent — nothing to trace
+
+        // Moore-neighbour boundary tracing (the standard, well-tested
+        // algorithm for walking the outer edge of a binary blob): from each
+        // boundary pixel, scan its 8 neighbours clockwise starting just past
+        // the pixel we arrived from, and step to the first "inside" one.
+        var NB = [[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]]; // N,NE,E,SE,S,SW,W,NW
+        function neighborIndex(dx, dy){
+          for(var i = 0; i < 8; i++){ if(NB[i][0] === dx && NB[i][1] === dy) return i; }
+          return -1;
+        }
+        var points = [{ x: sx, y: sy }];
+        var current = { x: sx, y: sy };
+        var backtrack = { x: sx - 1, y: sy }; // the pixel to the west is where the raster scan "arrived from"
+        var maxSteps = cw * ch * 8 + 200;
+        var steps = 0;
+        while(steps < maxSteps){
+          var startIdx = neighborIndex(backtrack.x - current.x, backtrack.y - current.y);
+          if(startIdx === -1) startIdx = 6; // fallback: west
+          var next = null, nextBacktrack = null;
+          for(var k = 1; k <= 8; k++){
+            var idx = (startIdx + k) % 8;
+            var nx = current.x + NB[idx][0], ny = current.y + NB[idx][1];
+            if(inside(nx, ny)){
+              next = { x: nx, y: ny };
+              var prevIdx = (idx + 7) % 8;
+              nextBacktrack = { x: current.x + NB[prevIdx][0], y: current.y + NB[prevIdx][1] };
+              break;
+            }
+          }
+          if(!next) break; // isolated single pixel — nothing more to trace
+          points.push(next);
+          backtrack = nextBacktrack;
+          current = next;
+          steps++;
+          if(current.x === sx && current.y === sy) break; // back at the start
+        }
+
+        if(points.length < 8){ callback(null); return; } // too small/noisy to be worth using
+
+        var simplified = simplifyPolygon(points, Math.max(1, CONTOUR_GRID * 0.012));
+        if(simplified.length < 3){ callback(null); return; }
+
+        var normalized = simplified.map(function(p){ return { x: p.x / cw, y: p.y / ch }; });
+        callback({ points: normalized, cw: cw, ch: ch });
+      } catch(err){
+        console.error('Contour trace failed:', err);
+        callback(null);
+      }
+    };
+    img.onerror = function(){ callback(null); };
+    img.src = dataUrl;
+  }
+
+  // Douglas-Peucker simplification, so a few-hundred-point pixel trace
+  // becomes a clean few-dozen-point path.
+  function simplifyPolygon(points, epsilon){
+    if(points.length < 3) return points;
+    function perpDist(pt, a, b){
+      var dx = b.x - a.x, dy = b.y - a.y;
+      if(dx === 0 && dy === 0) return Math.hypot(pt.x - a.x, pt.y - a.y);
+      var t = ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / (dx * dx + dy * dy);
+      var px = a.x + t * dx, py = a.y + t * dy;
+      return Math.hypot(pt.x - px, pt.y - py);
+    }
+    function dp(pts){
+      if(pts.length < 3) return pts;
+      var maxDist = 0, index = 0;
+      for(var i = 1; i < pts.length - 1; i++){
+        var d = perpDist(pts[i], pts[0], pts[pts.length - 1]);
+        if(d > maxDist){ maxDist = d; index = i; }
+      }
+      if(maxDist > epsilon){
+        var left = dp(pts.slice(0, index + 1));
+        var right = dp(pts.slice(index));
+        return left.slice(0, -1).concat(right);
+      }
+      return [pts[0], pts[pts.length - 1]];
+    }
+    return dp(points);
   }
 
   // ---- Shape selection ---------------------------------------------------
@@ -756,16 +877,28 @@
       var reader = new FileReader();
       reader.onload = function(ev){
         state.image = ev.target.result;
+        state.imageContour = null; // cleared until the trace below resolves
         uploadThumbWrap.innerHTML = '<img src="' + state.image + '" alt="Uploaded design thumbnail">';
         previewSvg.classList.add('has-image');
         adjustPanel.classList.add('show');
         // A freshly-uploaded design becomes a custom-cut sticker by default —
         // but only if the customer hasn't already deliberately picked a shape.
         if(shapeManuallySet){ recalc(); } else { selectShape('custom'); }
+
+        // Detect the artwork's own silhouette (alpha edge for a transparent
+        // PNG, or its own rectangle for an opaque photo) so Custom shape cuts
+        // around the actual design instead of a generic placeholder outline.
+        var uploadedImage = state.image;
+        traceImageContour(uploadedImage, function(contour){
+          if(state.image !== uploadedImage) return; // superseded by a newer upload
+          state.imageContour = contour;
+          recalc();
+        });
       };
       reader.readAsDataURL(file);
     } else {
       state.image = null;
+      state.imageContour = null;
       uploadThumbWrap.innerHTML = '<div class="file-badge">' + ext + '</div>';
       previewSvg.classList.remove('has-image');
       adjustPanel.classList.remove('show');
@@ -776,6 +909,7 @@
     e.stopPropagation();
     state.image = null;
     state.imagePreviewable = false;
+    state.imageContour = null;
     state.fileName = '';
     state.fileExt = '';
     resetImageTransform();
@@ -930,7 +1064,6 @@
     var total = Math.round((priced + shipping) * 100) / 100;
 
     rowSubtotalLabel.textContent = 'Stickers (' + state.qty + '×)';
-    qtyBadge.textContent = '×' + state.qty;
     rowSubtotal.textContent = fmt(priced);
     rowShip.textContent = shipping === 0 ? 'Free' : fmt(shipping);
     rowTotal.textContent = fmt(total);
@@ -955,13 +1088,21 @@
       return { tag: 'ellipse', attrs: 'cx="110" cy="110" rx="' + (pw/2) + '" ry="' + (ph/2) + '"' };
     }
     if(state.shape === 'custom'){
-      // Custom shapes are die-cut around irregular artwork (a photo, a logo
-      // outline, whatever you send us) — illustrated here as a sample organic
-      // multi-lobed contour rather than a plain polygon stretched to your
-      // width/height, since literally scaling an arbitrary outline to an
-      // aspect ratio wouldn't mean anything. pw/ph/x/y are fixed for this
-      // shape (see updatePreview), so this renders the same regardless of
-      // entered size.
+      // If we've traced the uploaded artwork's actual silhouette, cut around
+      // THAT — not a generic placeholder. pw/ph/x/y are already sized to the
+      // contour's own bounding box (see updatePreview).
+      if(state.image && state.imagePreviewable && state.imageContour){
+        var pts = state.imageContour.points;
+        var cd = 'M ' + (x + pts[0].x * pw) + ' ' + (y + pts[0].y * ph) + ' ' +
+          pts.slice(1).map(function(p){ return 'L ' + (x + p.x * pw) + ' ' + (y + p.y * ph); }).join(' ') +
+          ' Z';
+        return { tag: 'path', attrs: 'd="' + cd + '"' };
+      }
+      // No artwork uploaded yet — illustrate with a sample organic multi-lobed
+      // contour rather than a plain polygon stretched to your width/height,
+      // since literally scaling an arbitrary outline to an aspect ratio
+      // wouldn't mean anything. pw/ph/x/y are fixed for this shape (see
+      // updatePreview), so this renders the same regardless of entered size.
       var d = 'M ' + (x+pw*0.50) + ' ' + (y+ph*0.04) +
               ' C ' + (x+pw*0.74) + ' ' + (y+ph*0.00) + ', ' + (x+pw*0.97) + ' ' + (y+ph*0.16) + ', ' + (x+pw*0.95) + ' ' + (y+ph*0.37) +
               ' C ' + (x+pw*0.94) + ' ' + (y+ph*0.49) + ', ' + (x+pw*0.85) + ' ' + (y+ph*0.54) + ', ' + (x+pw*0.81) + ' ' + (y+ph*0.61) +
@@ -975,6 +1116,35 @@
       return { tag: 'path', attrs: 'd="' + d + '"' };
     }
     return { tag: 'rect', attrs: 'x="' + x + '" y="' + y + '" width="' + pw + '" height="' + ph + '"' };
+  }
+
+  // Renders the current shape preview SVG to a PNG data URL — this becomes
+  // the "design proof" attached to the order/confirmation emails, so it's a
+  // faithful record of exactly what the customer approved.
+  function renderProofPng(callback){
+    try {
+      var serializer = new XMLSerializer();
+      var svgStr = serializer.serializeToString(previewSvg);
+      var svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      var url = URL.createObjectURL(svgBlob);
+      var img = new Image();
+      img.onload = function(){
+        var size = 440; // 2x the 220 viewBox for a crisper attachment
+        var canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#3066be';
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        callback(canvas.toDataURL('image/png'));
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); callback(null); };
+      img.src = url;
+    } catch(err){
+      console.error('Proof render failed:', err);
+      callback(null);
+    }
   }
 
   function updatePreview(){
@@ -992,7 +1162,16 @@
     // note in shapeGeometry() for why stretching an arbitrary outline to
     // the entered width/height wouldn't make sense.
     if(state.shape === 'custom'){
-      pw = 183; ph = 150; x = 15; y = 15;
+      if(state.image && state.imagePreviewable && state.imageContour){
+        // Size the display box to the traced artwork's own aspect ratio, the
+        // same way every other shape fits itself into the 180px box.
+        var ccw = state.imageContour.cw, cch = state.imageContour.ch;
+        var cscale = box / Math.max(ccw, cch);
+        pw = Math.max(ccw * cscale, minPx); ph = Math.max(cch * cscale, minPx);
+        x = (220 - pw) / 2; y = (220 - ph) / 2;
+      } else {
+        pw = 183; ph = 150; x = 15; y = 15;
+      }
     }
 
     var geo = shapeGeometry(pw, ph, x, y);
@@ -1002,8 +1181,12 @@
     // the exact cut contour, not a rectangular backing card — so instead of
     // a white box behind the shape, draw the same shape again underneath,
     // padded outward with a thick white stroke, to fake that offset border.
+    // Scale the halo to the shape's own on-screen size — a fixed pixel width
+    // looked fine on an 80mm square but became a huge white block relative to
+    // a thin 200x60mm rectangle. Clamp so it never vanishes or overwhelms.
     var haloJoin = (state.shape === 'square' || state.shape === 'rectangle') ? 'miter' : 'round';
-    var halo = '<' + geo.tag + ' ' + geo.attrs + ' fill="#ffffff" stroke="#ffffff" stroke-width="16" stroke-linejoin="' + haloJoin + '"/>';
+    var haloWidth = clamp(Math.min(pw, ph) * 0.09, 6, 16);
+    var halo = '<' + geo.tag + ' ' + geo.attrs + ' fill="#ffffff" stroke="#ffffff" stroke-width="' + haloWidth + '" stroke-linejoin="' + haloJoin + '"/>';
 
     var markup;
     if(state.image && state.imagePreviewable){
@@ -1028,6 +1211,16 @@
     } else {
       markup = halo + '<' + geo.tag + ' ' + geo.attrs + ' fill="' + fillColor + '" stroke="#16181d" stroke-width="3"/>';
     }
+
+    // Quantity badge — anchored to the shape's own bounding box (not the
+    // fixed SVG canvas) so it overlaps the sticker itself rather than
+    // floating in empty space when the shape is small or off-centre.
+    var badgeX = x + pw * 0.78, badgeY = y + ph * 0.92;
+    markup += '<g transform="rotate(-10 ' + badgeX + ' ' + badgeY + ')">' +
+              '<text x="' + (badgeX + 4) + '" y="' + (badgeY + 4) + '" font-size="44" font-weight="900" fill="rgba(0,0,0,.35)" style="letter-spacing:-2px;font-family:inherit;">×' + state.qty + '</text>' +
+              '<text x="' + badgeX + '" y="' + badgeY + '" class="qty-badge-text">×' + state.qty + '</text>' +
+              '</g>';
+
     previewSvg.innerHTML = markup;
 
     var unit = UNIT_LABEL[state.unit];
@@ -1038,7 +1231,18 @@
     if(state.qty > 1){ label += '  ·  qty ' + state.qty; }
     if(state.fileName && !state.imagePreviewable){ label += '  ·  ' + state.fileExt + ' attached'; }
     previewCaption.textContent = label;
+
+    // Any change to what's actually being shown invalidates a prior approval
+    // — the customer needs to re-approve whatever they're looking at now.
+    if(approveDesign.checked){
+      approveDesign.checked = false;
+      checkoutBtn.disabled = true;
+    }
   }
+
+  approveDesign.addEventListener('change', function(){
+    checkoutBtn.disabled = !approveDesign.checked;
+  });
 
   // ---- Checkout ----------------------------------------------------------
   function setCheckoutMessage(text, kind){
@@ -1047,43 +1251,65 @@
   }
 
   checkoutBtn.addEventListener('click', function(){
+    if(!approveDesign.checked) return;
     checkoutBtn.disabled = true;
     var originalLabel = checkoutBtnLabel.textContent;
-    checkoutBtnLabel.textContent = 'Redirecting to secure checkout…';
+    checkoutBtnLabel.textContent = 'Preparing your design proof…';
     setCheckoutMessage('', '');
 
-    var fd = new FormData();
-    fd.append('shape', state.shape);
-    fd.append('widthMM', state.width);
-    fd.append('heightMM', state.height);
-    fd.append('qty', state.qty);
-    fd.append('unit', state.unit);
-    var file = logoInput.files && logoInput.files[0];
-    if(file){ fd.append('artwork', file); }
-    // How the customer positioned their design in the preview (zoom/rotate/
-    // flip/pan) — passed through so whoever prints the order can match it,
-    // since the uploaded file itself is untouched.
-    if(file && state.imagePreviewable){
-      fd.append('imageTransform', JSON.stringify(state.imageTransform));
+    function fail(message){
+      checkoutBtn.disabled = false;
+      checkoutBtnLabel.textContent = originalLabel;
+      setCheckoutMessage(message || 'Something went wrong starting checkout. Please try again.', 'error');
     }
 
-    fetch('/api/checkout', { method: 'POST', body: fd })
-      .then(function(r){
-        if(!r.ok){
-          return r.json().catch(function(){ return {}; }).then(function(d){
-            throw new Error(d.error || 'Checkout failed. Please try again.');
+    // The design proof (a snapshot of exactly what's shown above, which the
+    // customer just approved) is emailed to both you and us — generate it
+    // before submitting the order.
+    renderProofPng(function(proofDataUrl){
+      var fd = new FormData();
+      fd.append('shape', state.shape);
+      fd.append('widthMM', state.width);
+      fd.append('heightMM', state.height);
+      fd.append('qty', state.qty);
+      fd.append('unit', state.unit);
+      var file = logoInput.files && logoInput.files[0];
+      if(file){ fd.append('artwork', file); }
+      // How the customer positioned their design in the preview (zoom/rotate/
+      // flip/pan) — passed through so whoever prints the order can match it,
+      // since the uploaded file itself is untouched.
+      if(file && state.imagePreviewable){
+        fd.append('imageTransform', JSON.stringify(state.imageTransform));
+      }
+
+      function submit(){
+        checkoutBtnLabel.textContent = 'Redirecting to secure checkout…';
+        fetch('/api/checkout', { method: 'POST', body: fd })
+          .then(function(r){
+            if(!r.ok){
+              return r.json().catch(function(){ return {}; }).then(function(d){
+                throw new Error(d.error || 'Checkout failed. Please try again.');
+              });
+            }
+            return r.json();
+          })
+          .then(function(data){
+            window.location.href = data.url;
+          })
+          .catch(function(err){
+            fail(err.message);
           });
-        }
-        return r.json();
-      })
-      .then(function(data){
-        window.location.href = data.url;
-      })
-      .catch(function(err){
-        checkoutBtn.disabled = false;
-        checkoutBtnLabel.textContent = originalLabel;
-        setCheckoutMessage(err.message || 'Something went wrong starting checkout. Please try again.', 'error');
-      });
+      }
+
+      if(proofDataUrl){
+        fetch(proofDataUrl).then(function(r){ return r.blob(); }).then(function(blob){
+          fd.append('designProof', blob, 'design-proof.png');
+          submit();
+        }).catch(function(){ submit(); }); // proof generation hiccup shouldn't block the order
+      } else {
+        submit();
+      }
+    });
   });
 
   // If we've just come back from Stripe, show the outcome.
