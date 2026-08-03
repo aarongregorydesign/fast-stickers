@@ -76,64 +76,100 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const uploadFields = upload.fields([
-  { name: 'artwork', maxCount: 1 },
-  { name: 'designProof', maxCount: 1 },
-]);
+const MAX_BASKET_ITEMS = 30;
+const FREE_DELIVERY_AT = 30; // £ — keep in sync with lib/pricing.js
+const FLAT_POSTAGE = 10; // £
 
-app.post('/api/checkout', uploadFields, async (req, res) => {
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+// Field names are dynamic per basket item (artwork_0, designProof_0,
+// artwork_1, ...), so we accept any file field and match them back up to
+// their basket index ourselves, rather than declaring fixed field names.
+const uploadAny = upload.any();
+
+app.post('/api/checkout', uploadAny, async (req, res) => {
   try {
     if (!stripe) {
       return res.status(503).json({ error: 'Payments are not configured yet — please check back soon.' });
     }
 
-    const { shape, widthMM, heightMM, qty, unit, imageTransform } = req.body;
-    if (!VALID_SHAPES.includes(shape)) {
-      return res.status(400).json({ error: 'Invalid shape' });
+    let itemsMeta;
+    try {
+      itemsMeta = JSON.parse(req.body.items || '[]');
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid basket data' });
+    }
+    if (!Array.isArray(itemsMeta) || itemsMeta.length === 0) {
+      return res.status(400).json({ error: 'Your basket is empty' });
+    }
+    if (itemsMeta.length > MAX_BASKET_ITEMS) {
+      return res.status(400).json({ error: `Please split orders over ${MAX_BASKET_ITEMS} items into more than one order.` });
     }
 
-    // Authoritative price — never trust a total sent by the client.
-    const priced = priceOrder({ shape, widthMM, heightMM, qty });
+    const filesByField = {};
+    (req.files || []).forEach((f) => { filesByField[f.fieldname] = f; });
 
-    const artworkFile = req.files && req.files.artwork && req.files.artwork[0];
-    const proofFile = req.files && req.files.designProof && req.files.designProof[0];
+    const items = [];
+    for (let i = 0; i < itemsMeta.length; i++) {
+      const raw = itemsMeta[i] || {};
+      if (!VALID_SHAPES.includes(raw.shape)) {
+        return res.status(400).json({ error: `Invalid shape in basket item ${i + 1}` });
+      }
+      // Authoritative price for each item — never trust a total sent by the client.
+      const priced = priceOrder({ shape: raw.shape, widthMM: raw.widthMM, heightMM: raw.heightMM, qty: raw.qty });
+      const artworkFile = filesByField[`artwork_${i}`];
+      const proofFile = filesByField[`designProof_${i}`];
+      items.push({
+        shape: raw.shape,
+        unit: raw.unit || 'mm',
+        widthMM: priced.width,
+        heightMM: priced.height,
+        qty: priced.qty,
+        subtotal: priced.subtotal,
+        imageTransform: parseImageTransform(raw.imageTransform),
+        file: artworkFile
+          ? { buffer: artworkFile.buffer, originalname: artworkFile.originalname, mimetype: artworkFile.mimetype }
+          : null,
+        // A snapshot of exactly what the customer approved on-screen for
+        // this item — separate from the original artwork file itself.
+        proof: proofFile ? { buffer: proofFile.buffer, mimetype: proofFile.mimetype } : null,
+      });
+    }
+
+    // Delivery is worked out once across the whole basket, not per item.
+    const subtotal = round2(items.reduce((sum, it) => sum + it.subtotal, 0));
+    const shipping = subtotal >= FREE_DELIVERY_AT ? 0 : FLAT_POSTAGE;
+    const total = round2(subtotal + shipping);
 
     const orderId = crypto.randomUUID();
-    pendingOrders.set(orderId, {
-      shape,
-      unit: unit || 'mm',
-      widthMM: priced.width,
-      heightMM: priced.height,
-      qty: priced.qty,
-      subtotal: priced.subtotal,
-      shipping: priced.shipping,
-      total: priced.total,
-      imageTransform: parseImageTransform(imageTransform),
-      file: artworkFile
-        ? { buffer: artworkFile.buffer, originalname: artworkFile.originalname, mimetype: artworkFile.mimetype }
-        : null,
-      // A snapshot of exactly what the customer approved on-screen — the
-      // "design proof" — separate from the original artwork file itself.
-      proof: proofFile ? { buffer: proofFile.buffer, mimetype: proofFile.mimetype } : null,
-      createdAt: Date.now(),
-    });
+    pendingOrders.set(orderId, { items, subtotal, shipping, total, createdAt: Date.now() });
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const lineItems = items.map((it) => ({
+      price_data: {
+        currency: 'gbp',
+        product_data: { name: `Custom sticker — ${it.shape}, ${it.widthMM}×${it.heightMM}mm × ${it.qty}` },
+        unit_amount: Math.round(it.subtotal * 100),
+      },
+      quantity: 1,
+    }));
+    if (shipping > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'gbp',
+          product_data: { name: 'Postage & packaging' },
+          unit_amount: Math.round(shipping * 100),
+        },
+        quantity: 1,
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'gbp',
-            product_data: {
-              name: `Custom sticker — ${shape}, ${priced.width}×${priced.height}mm × ${priced.qty}`,
-            },
-            unit_amount: Math.round(priced.total * 100),
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       shipping_address_collection: { allowed_countries: ['GB'] },
       metadata: { orderId },
       success_url: `${baseUrl}/?success=1&session_id={CHECKOUT_SESSION_ID}`,
@@ -197,38 +233,42 @@ async function sendOrderNotification(session, order) {
     ? [addr.line1, addr.line2, addr.city, addr.postal_code, addr.country].filter(Boolean).join(', ')
     : 'Not provided';
 
-  const transformNote = order && describeImageTransform(order.imageTransform);
-  const orderLines = order
-    ? [
-        `Shape: ${order.shape}`,
-        `Size: ${order.widthMM}mm × ${order.heightMM}mm`,
-        `Quantity: ${order.qty}`,
-        `Stickers: £${order.subtotal.toFixed(2)}`,
-        `Postage: £${order.shipping.toFixed(2)}`,
-        `Total: £${order.total.toFixed(2)}`,
-      ].concat(transformNote ? [`Design positioning (from customer's preview): ${transformNote}`] : [])
-    : [`Total paid: £${(session.amount_total / 100).toFixed(2)}`, '(order detail lookup expired)'];
+  const items = order ? order.items : null;
+
+  const itemLines = items
+    ? items
+        .map((it, i) => {
+          const transformNote = describeImageTransform(it.imageTransform);
+          return `<p><strong>Item ${i + 1}:</strong> ${it.shape}, ${it.widthMM}mm × ${it.heightMM}mm, qty ${it.qty} — £${it.subtotal.toFixed(2)}` +
+            (transformNote ? `<br>Design positioning (from customer's preview): ${transformNote}` : '') +
+            (it.proof ? `<br>Design proof attached (item-${i + 1}-design-proof.png)` : '') +
+            `</p>`;
+        })
+        .join('')
+    : '';
+
+  const summaryHtml = order
+    ? `<p>Stickers subtotal: £${order.subtotal.toFixed(2)}<br>Postage: £${order.shipping.toFixed(2)}<br>Total: £${order.total.toFixed(2)}</p>`
+    : `<p>Total paid: £${(session.amount_total / 100).toFixed(2)} (order detail lookup expired)</p>`;
 
   const html = `
-    <h2>New Fast Stickers order</h2>
+    <h2>New Fast Stickers order${items ? ` — ${items.length} item${items.length === 1 ? '' : 's'}` : ''}</h2>
     <p><strong>Customer:</strong> ${customerEmail || 'unknown'}</p>
     <p><strong>Shipping address:</strong> ${addressLines}</p>
-    <p>${orderLines.join('<br>')}</p>
-    ${order && order.proof ? '<p>Design proof attached — this is exactly what the customer approved before paying.</p>' : ''}
+    ${itemLines}
+    ${summaryHtml}
     <p style="color:#888;font-size:12px;">Stripe session: ${session.id}</p>
   `;
 
   const attachments = [];
-  if (order && order.file) {
-    attachments.push({
-      filename: order.file.originalname,
-      content: order.file.buffer.toString('base64'),
-    });
-  }
-  if (order && order.proof) {
-    attachments.push({
-      filename: 'design-proof.png',
-      content: order.proof.buffer.toString('base64'),
+  if (items) {
+    items.forEach((it, i) => {
+      if (it.file) {
+        attachments.push({ filename: `item-${i + 1}-${it.file.originalname}`, content: it.file.buffer.toString('base64') });
+      }
+      if (it.proof) {
+        attachments.push({ filename: `item-${i + 1}-design-proof.png`, content: it.proof.buffer.toString('base64') });
+      }
     });
   }
 
@@ -240,21 +280,25 @@ async function sendOrderNotification(session, order) {
     attachments,
   });
 
-  // Also send the customer their own copy of the design proof they approved,
-  // as a record of exactly what's being printed.
-  if (customerEmail && order && order.proof) {
+  // Also send the customer their own copy of the design proofs they
+  // approved, as a record of exactly what's being printed.
+  if (customerEmail && items) {
     try {
+      const proofAttachments = items
+        .map((it, i) => (it.proof ? { filename: `item-${i + 1}-design-proof.png`, content: it.proof.buffer.toString('base64') } : null))
+        .filter(Boolean);
       await resend.emails.send({
         from: RESEND_FROM,
         to: customerEmail,
-        subject: 'Your Fast Stickers order — design proof',
+        subject: `Your Fast Stickers order — design proof${items.length === 1 ? '' : 's'}`,
         html: `
           <h2>Thanks for your order!</h2>
-          <p>Here's the design proof you approved before checkout — attached as a reference for exactly what we're printing and cutting.</p>
-          <p>Shape: ${order.shape}<br>Size: ${order.widthMM}mm × ${order.heightMM}mm<br>Quantity: ${order.qty}<br>Total: £${order.total.toFixed(2)}</p>
+          <p>Here ${items.length === 1 ? 'is the design proof' : 'are the design proofs'} you approved before checkout — attached as a reference for exactly what we're printing and cutting.</p>
+          ${itemLines}
+          ${summaryHtml}
           <p>If anything here doesn't look right, just reply to this email and we'll sort it out before it goes into production.</p>
         `,
-        attachments: [{ filename: 'design-proof.png', content: order.proof.buffer.toString('base64') }],
+        attachments: proofAttachments,
       });
     } catch (err) {
       console.error('Failed to send customer proof email:', err);

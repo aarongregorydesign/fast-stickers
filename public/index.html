@@ -169,6 +169,41 @@
     background:var(--brand);color:#fff;padding:40px;
     display:flex;flex-direction:column;
   }
+
+  .basket-panel{
+    display:none;margin-top:24px;background:var(--ink);color:#fff;border-radius:24px;
+    padding:32px 40px;box-shadow:0 20px 60px -30px rgba(22,24,29,.25);
+  }
+  .basket-panel.show{display:block;}
+  .basket-panel h3{margin:0 0 18px;font-size:19px;}
+  .basket-panel h3 span{color:rgba(255,255,255,.5);font-weight:600;font-size:14px;}
+  .basket-item{
+    display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.12);
+  }
+  .basket-item:first-child{border-top:1px solid rgba(255,255,255,.12);}
+  .basket-item-thumb{
+    flex:none;width:48px;height:48px;border-radius:10px;background:#fff;border:2px solid var(--ink);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .basket-item-thumb img{width:100%;height:100%;object-fit:cover;}
+  .basket-item-info{flex:1;min-width:0;}
+  .basket-item-info .name{font-weight:700;font-size:14px;}
+  .basket-item-info .meta{font-size:12.5px;color:rgba(255,255,255,.55);margin-top:2px;}
+  .basket-item-price{font-weight:800;font-size:15px;flex:none;}
+  .basket-item-remove{
+    flex:none;background:none;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.7);
+    border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;
+  }
+  .basket-item-remove:hover{border-color:rgba(255,255,255,.5);color:#fff;}
+  .basket-summary{max-width:360px;margin-left:auto;margin-top:18px;}
+  .basket-summary .price-row{color:rgba(255,255,255,.65);}
+  .basket-summary .price-row strong{color:#fff;}
+  .basket-summary .price-row.total{border-top:1.5px dashed rgba(255,255,255,.2);color:#fff;}
+  .basket-summary .price-row.total span:last-child{color:var(--accent);}
+  .basket-summary .ship-note{color:rgba(255,255,255,.55);}
+  .basket-summary .ship-note.free{color:var(--accent);}
+  #basketPanel .btn-order{max-width:360px;margin-left:auto;margin-right:0;}
+  #basketPanel .checkout-note{max-width:360px;margin-left:auto;margin-right:0;}
   .field{margin-bottom:26px;}
   .field label{display:block;font-weight:700;font-size:14px;margin-bottom:10px;}
   .field .hint{font-weight:400;color:var(--ink-soft);font-size:12.5px;margin-top:6px;}
@@ -551,9 +586,6 @@
 
         <div class="price-box">
           <div class="price-row"><span id="rowSubtotalLabel">Stickers (1×)</span><strong id="rowSubtotal">£0.00</strong></div>
-          <div class="price-row"><span>Postage &amp; packaging</span><strong id="rowShip">£0.00</strong></div>
-          <div class="price-row total"><span>Total</span><span id="rowTotal">£0.00</span></div>
-          <div class="ship-note" id="shipNote">Add items to reach £30 for free delivery.</div>
         </div>
 
         <label class="approve-row">
@@ -561,13 +593,29 @@
           <span>I approve this design proof above for printing exactly as shown.</span>
         </label>
 
-        <button class="btn-order" type="button" id="checkoutBtn" disabled>
-          <span id="checkoutBtnLabel">🔒 Checkout — pay now</span>
-          <span class="btn-order-total" id="btnOrderTotal">£0.00</span>
+        <button class="btn-order" type="button" id="addToBasketBtn" disabled>
+          <span id="addToBasketBtnLabel">🧺 Add to basket</span>
+          <span class="btn-order-total" id="itemSubtotalLabel">£0.00</span>
         </button>
-        <div class="checkout-note">🔒 Secure payment via Stripe · a copy of your design proof is emailed to you</div>
-        <div class="checkout-msg" id="checkoutMsg"></div>
+        <div class="checkout-msg" id="itemMsg"></div>
       </div>
+    </div>
+
+    <div class="basket-panel" id="basketPanel">
+      <h3>Your basket <span id="basketCount"></span></h3>
+      <div id="basketItems"></div>
+      <div class="basket-summary">
+        <div class="price-row"><span>Stickers subtotal</span><strong id="basketSubtotal">£0.00</strong></div>
+        <div class="price-row"><span>Postage &amp; packaging</span><strong id="basketShip">£0.00</strong></div>
+        <div class="price-row total"><span>Total</span><span id="basketTotal">£0.00</span></div>
+        <div class="ship-note" id="basketShipNote">Add £30 to your order for free delivery.</div>
+      </div>
+      <button class="btn-order" type="button" id="basketCheckoutBtn">
+        <span id="basketCheckoutBtnLabel">🔒 Checkout — pay now</span>
+        <span class="btn-order-total" id="basketCheckoutTotal">£0.00</span>
+      </button>
+      <div class="checkout-note">🔒 Secure payment via Stripe · a copy of each design proof is emailed to you</div>
+      <div class="checkout-msg" id="basketCheckoutMsg"></div>
     </div>
   </div>
 </section>
@@ -644,8 +692,13 @@
     shape: 'square', width: 80, height: 80, qty: 1, unit: 'mm',
     image: null, imagePreviewable: false, fileName: '', fileExt: '',
     imageContour: null, // { points:[{x,y} 0-1], cw, ch } — the traced silhouette of the uploaded artwork
-    imageTransform: { scale: 1, rotate: 0, flipX: 1, flipY: 1, panX: 0, panY: 0 }
+    imageTransform: { scale: 1, rotate: 0, flipX: 1, flipY: 1, panX: 0, panY: 0 },
+    currentSubtotal: 0 // this item's own price, kept in sync by recalc()
   };
+
+  // Items the customer has added — each one gets its own artwork/proof/price,
+  // combined into a single order (and a single Stripe payment) at checkout.
+  var basket = [];
 
   // ---- Elements --------------------------------------------------------
   var shapeGrid    = document.getElementById('shapeGrid');
@@ -665,20 +718,28 @@
   var previewCaption = document.getElementById('previewCaption');
   var rowSubtotalLabel = document.getElementById('rowSubtotalLabel');
   var rowSubtotal = document.getElementById('rowSubtotal');
-  var rowShip = document.getElementById('rowShip');
-  var rowTotal = document.getElementById('rowTotal');
-  var btnOrderTotal = document.getElementById('btnOrderTotal');
-  var shipNote = document.getElementById('shipNote');
   var uploadBox    = document.getElementById('uploadBox');
   var logoInput    = document.getElementById('logoInput');
   var uploadThumbWrap = document.getElementById('uploadThumbWrap');
   var uploadName   = document.getElementById('uploadName');
   var uploadRemove = document.getElementById('uploadRemove');
-  var checkoutBtn  = document.getElementById('checkoutBtn');
-  var checkoutBtnLabel = document.getElementById('checkoutBtnLabel');
-  var checkoutMsg  = document.getElementById('checkoutMsg');
+  var addToBasketBtn  = document.getElementById('addToBasketBtn');
+  var addToBasketBtnLabel = document.getElementById('addToBasketBtnLabel');
+  var itemSubtotalLabel = document.getElementById('itemSubtotalLabel');
+  var itemMsg  = document.getElementById('itemMsg');
   var approveDesign = document.getElementById('approveDesign');
   var adjustPanel  = document.getElementById('adjustPanel');
+  var basketPanel  = document.getElementById('basketPanel');
+  var basketItemsEl = document.getElementById('basketItems');
+  var basketCount  = document.getElementById('basketCount');
+  var basketSubtotalEl = document.getElementById('basketSubtotal');
+  var basketShipEl = document.getElementById('basketShip');
+  var basketTotalEl = document.getElementById('basketTotal');
+  var basketShipNote = document.getElementById('basketShipNote');
+  var basketCheckoutBtn = document.getElementById('basketCheckoutBtn');
+  var basketCheckoutBtnLabel = document.getElementById('basketCheckoutBtnLabel');
+  var basketCheckoutTotal = document.getElementById('basketCheckoutTotal');
+  var basketCheckoutMsg = document.getElementById('basketCheckoutMsg');
   var imgZoom      = document.getElementById('imgZoom');
   var imgRotate    = document.getElementById('imgRotate');
   var imgFlipH     = document.getElementById('imgFlipH');
@@ -1061,27 +1122,14 @@
     var rawCost = (lengthMM / 1000) * COST_PER_METRE;
     // A £4.50 floor keeps a one-off small run from pricing out at pennies —
     // there's always a real minimum cost to setting up and cutting a job.
-    // Round the subtotal first, then derive shipping/total from that rounded
-    // value — summing already-rounded figures guarantees the displayed
-    // subtotal + shipping always matches the displayed total exactly.
     var priced = Math.round(Math.max(rawCost * MARGIN_MULTIPLIER, MIN_ORDER_PRICE) * 100) / 100;
+    state.currentSubtotal = priced;
 
-    var shipping = priced >= FREE_DELIVERY_AT ? 0 : FLAT_POSTAGE;
-    var total = Math.round((priced + shipping) * 100) / 100;
-
+    // Delivery is worked out across the whole basket at checkout, not per
+    // item — this box just shows what this one item's stickers cost.
     rowSubtotalLabel.textContent = 'Stickers (' + state.qty + '×)';
     rowSubtotal.textContent = fmt(priced);
-    rowShip.textContent = shipping === 0 ? 'Free' : fmt(shipping);
-    rowTotal.textContent = fmt(total);
-    btnOrderTotal.textContent = fmt(total);
-
-    if(shipping === 0){
-      shipNote.textContent = 'Nice — this order qualifies for free delivery.';
-      shipNote.classList.add('free');
-    } else {
-      shipNote.textContent = 'Add ' + fmt(FREE_DELIVERY_AT - priced) + ' more to your order for free delivery.';
-      shipNote.classList.remove('free');
-    }
+    itemSubtotalLabel.textContent = fmt(priced);
 
     updatePreview();
   }
@@ -1273,89 +1321,196 @@
     // — the customer needs to re-approve whatever they're looking at now.
     if(approveDesign.checked){
       approveDesign.checked = false;
-      checkoutBtn.disabled = true;
+      addToBasketBtn.disabled = true;
     }
   }
 
   approveDesign.addEventListener('change', function(){
-    checkoutBtn.disabled = !approveDesign.checked;
+    addToBasketBtn.disabled = !approveDesign.checked;
   });
 
-  // ---- Checkout ----------------------------------------------------------
-  function setCheckoutMessage(text, kind){
-    checkoutMsg.textContent = text || '';
-    checkoutMsg.className = 'checkout-msg' + (text ? ' show' : '') + (kind ? ' ' + kind : '');
+  function setItemMessage(text, kind){
+    itemMsg.textContent = text || '';
+    itemMsg.className = 'checkout-msg' + (text ? ' show' : '') + (kind ? ' ' + kind : '');
+  }
+  function setBasketMessage(text, kind){
+    basketCheckoutMsg.textContent = text || '';
+    basketCheckoutMsg.className = 'checkout-msg' + (text ? ' show' : '') + (kind ? ' ' + kind : '');
   }
 
-  checkoutBtn.addEventListener('click', function(){
+  // ---- Basket --------------------------------------------------------------
+  function resetConfigurator(){
+    logoInput.value = '';
+    state.image = null;
+    state.imagePreviewable = false;
+    state.imageContour = null;
+    state.fileName = '';
+    state.fileExt = '';
+    resetImageTransform();
+    uploadBox.classList.remove('has-image');
+    previewSvg.classList.remove('has-image');
+    adjustPanel.classList.remove('show');
+    widthInput.value = 80;
+    heightInput.value = 80;
+    qtyInput.value = 1;
+    readQty();
+    approveDesign.checked = false;
+    addToBasketBtn.disabled = true;
+    shapeManuallySet = false;
+    selectShape('square');
+  }
+
+  function fmtDims(mmW, mmH, unit){
+    var u = UNIT_LABEL[unit];
+    var w2 = fromMM(mmW, unit), h2 = fromMM(mmH, unit);
+    return mmW === mmH ? (w2 + u) : (w2 + u + ' × ' + h2 + u);
+  }
+
+  function renderBasket(){
+    basketPanel.classList.toggle('show', basket.length > 0);
+    basketCount.textContent = basket.length ? '(' + basket.length + (basket.length === 1 ? ' item' : ' items') + ')' : '';
+
+    basketItemsEl.innerHTML = basket.map(function(item){
+      var thumb = item.imagePreviewable && item.imageDataUrl
+        ? '<img src="' + item.imageDataUrl + '" alt="">'
+        : '<span style="font-size:18px;">' + (item.shape === 'circle' ? '●' : item.shape === 'custom' ? '◆' : '■') + '</span>';
+      return '<div class="basket-item" data-id="' + item.id + '">' +
+        '<div class="basket-item-thumb">' + thumb + '</div>' +
+        '<div class="basket-item-info">' +
+          '<div class="name">' + item.shape.charAt(0).toUpperCase() + item.shape.slice(1) + ' · ' + fmtDims(item.width, item.height, item.unit) + '</div>' +
+          '<div class="meta">Qty ' + item.qty + (item.fileName ? ' · ' + item.fileName : '') + '</div>' +
+        '</div>' +
+        '<div class="basket-item-price">' + fmt(item.subtotal) + '</div>' +
+        '<button type="button" class="basket-item-remove" data-remove="' + item.id + '">Remove</button>' +
+      '</div>';
+    }).join('');
+
+    var subtotal = basket.reduce(function(sum, item){ return sum + item.subtotal; }, 0);
+    subtotal = Math.round(subtotal * 100) / 100;
+    var shipping = subtotal === 0 ? 0 : (subtotal >= FREE_DELIVERY_AT ? 0 : FLAT_POSTAGE);
+    var total = Math.round((subtotal + shipping) * 100) / 100;
+
+    basketSubtotalEl.textContent = fmt(subtotal);
+    basketShipEl.textContent = shipping === 0 ? 'Free' : fmt(shipping);
+    basketTotalEl.textContent = fmt(total);
+    basketCheckoutTotal.textContent = fmt(total);
+
+    if(basket.length === 0){
+      basketShipNote.textContent = 'Add £30 to your order for free delivery.';
+      basketShipNote.classList.remove('free');
+    } else if(shipping === 0){
+      basketShipNote.textContent = 'Nice — this order qualifies for free delivery.';
+      basketShipNote.classList.add('free');
+    } else {
+      basketShipNote.textContent = 'Add ' + fmt(FREE_DELIVERY_AT - subtotal) + ' more to your order for free delivery.';
+      basketShipNote.classList.remove('free');
+    }
+  }
+
+  basketItemsEl.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-remove]');
+    if(!btn) return;
+    var id = btn.getAttribute('data-remove');
+    basket = basket.filter(function(item){ return item.id !== id; });
+    renderBasket();
+  });
+
+  addToBasketBtn.addEventListener('click', function(){
     if(!approveDesign.checked) return;
-    checkoutBtn.disabled = true;
-    var originalLabel = checkoutBtnLabel.textContent;
-    checkoutBtnLabel.textContent = 'Preparing your design proof…';
-    setCheckoutMessage('', '');
+    addToBasketBtn.disabled = true;
+    var originalLabel = addToBasketBtnLabel.textContent;
+    addToBasketBtnLabel.textContent = 'Adding…';
+    setItemMessage('', '');
+
+    renderProofPng(function(proofDataUrl){
+      var file = logoInput.files && logoInput.files[0];
+      basket.push({
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+        shape: state.shape, width: state.width, height: state.height, qty: state.qty, unit: state.unit,
+        subtotal: state.currentSubtotal,
+        fileName: state.fileName, imagePreviewable: state.imagePreviewable,
+        imageDataUrl: state.imagePreviewable ? state.image : null,
+        imageFile: file || null,
+        imageTransform: file && state.imagePreviewable ? JSON.stringify(state.imageTransform) : null,
+        proofDataUrl: proofDataUrl
+      });
+      renderBasket();
+      resetConfigurator();
+      addToBasketBtnLabel.textContent = originalLabel;
+      basketPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+
+  basketCheckoutBtn.addEventListener('click', function(){
+    if(basket.length === 0) return;
+    basketCheckoutBtn.disabled = true;
+    var originalLabel = basketCheckoutBtnLabel.textContent;
+    basketCheckoutBtnLabel.textContent = 'Redirecting to secure checkout…';
+    setBasketMessage('', '');
 
     function fail(message){
-      checkoutBtn.disabled = false;
-      checkoutBtnLabel.textContent = originalLabel;
-      setCheckoutMessage(message || 'Something went wrong starting checkout. Please try again.', 'error');
+      basketCheckoutBtn.disabled = false;
+      basketCheckoutBtnLabel.textContent = originalLabel;
+      setBasketMessage(message || 'Something went wrong starting checkout. Please try again.', 'error');
     }
 
-    // The design proof (a snapshot of exactly what's shown above, which the
-    // customer just approved) is emailed to both you and us — generate it
-    // before submitting the order.
-    renderProofPng(function(proofDataUrl){
-      var fd = new FormData();
-      fd.append('shape', state.shape);
-      fd.append('widthMM', state.width);
-      fd.append('heightMM', state.height);
-      fd.append('qty', state.qty);
-      fd.append('unit', state.unit);
-      var file = logoInput.files && logoInput.files[0];
-      if(file){ fd.append('artwork', file); }
-      // How the customer positioned their design in the preview (zoom/rotate/
-      // flip/pan) — passed through so whoever prints the order can match it,
-      // since the uploaded file itself is untouched.
-      if(file && state.imagePreviewable){
-        fd.append('imageTransform', JSON.stringify(state.imageTransform));
-      }
+    var fd = new FormData();
+    var itemsMeta = basket.map(function(item){
+      return { shape: item.shape, widthMM: item.width, heightMM: item.height, qty: item.qty, unit: item.unit, imageTransform: item.imageTransform };
+    });
+    fd.append('items', JSON.stringify(itemsMeta));
 
-      function submit(){
-        checkoutBtnLabel.textContent = 'Redirecting to secure checkout…';
-        fetch('/api/checkout', { method: 'POST', body: fd })
-          .then(function(r){
-            if(!r.ok){
-              return r.json().catch(function(){ return {}; }).then(function(d){
-                throw new Error(d.error || 'Checkout failed. Please try again.');
-              });
-            }
-            return r.json();
-          })
-          .then(function(data){
-            window.location.href = data.url;
-          })
-          .catch(function(err){
-            fail(err.message);
-          });
-      }
-
-      if(proofDataUrl){
-        fetch(proofDataUrl).then(function(r){ return r.blob(); }).then(function(blob){
-          fd.append('designProof', blob, 'design-proof.png');
-          submit();
-        }).catch(function(){ submit(); }); // proof generation hiccup shouldn't block the order
-      } else {
-        submit();
+    // Attach each item's artwork/proof under indexed field names so the
+    // server can match them back up to the right basket entry.
+    // Each item's proof PNG is fetched from its data URL and converted to a
+    // Blob asynchronously; submit() only fires once every one of those has
+    // settled (the counter only ever reaches 0 once, from whichever async
+    // step happens to finish last).
+    var pending = 0;
+    basket.forEach(function(item, i){
+      if(item.imageFile){ fd.append('artwork_' + i, item.imageFile); }
+      if(item.proofDataUrl){
+        pending++;
+        fetch(item.proofDataUrl).then(function(r){ return r.blob(); }).then(function(blob){
+          fd.append('designProof_' + i, blob, 'design-proof-' + i + '.png');
+        }).catch(function(){
+          // a single missing proof shouldn't block the whole order
+        }).then(function(){
+          pending--;
+          if(pending === 0) submit();
+        });
       }
     });
+    if(pending === 0) submit();
+
+    function submit(){
+      fetch('/api/checkout', { method: 'POST', body: fd })
+        .then(function(r){
+          if(!r.ok){
+            return r.json().catch(function(){ return {}; }).then(function(d){
+              throw new Error(d.error || 'Checkout failed. Please try again.');
+            });
+          }
+          return r.json();
+        })
+        .then(function(data){
+          window.location.href = data.url;
+        })
+        .catch(function(err){
+          fail(err.message);
+        });
+    }
   });
 
   // If we've just come back from Stripe, show the outcome.
   (function(){
     var params = new URLSearchParams(window.location.search);
     if(params.get('success')){
-      setCheckoutMessage('✅ Payment received — thanks! A confirmation has been sent and we’ll get printing.', 'success');
+      basket = [];
+      renderBasket();
+      setItemMessage('✅ Payment received — thanks! A confirmation has been sent and we’ll get printing.', 'success');
     } else if(params.get('canceled')){
-      setCheckoutMessage('Checkout canceled — your sticker setup is still here whenever you’re ready.', 'info');
+      setItemMessage('Checkout canceled — your basket is still here whenever you’re ready.', 'info');
     }
   })();
 
