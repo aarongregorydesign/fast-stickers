@@ -274,6 +274,7 @@
     flex:1;display:flex;align-items:center;justify-content:center;
     min-height:220px;
   }
+  #shapePreview{ user-select:none; -webkit-user-select:none; }
   #shapePreview.has-image{cursor:grab;}
   #shapePreview.has-image.dragging{cursor:grabbing;}
   .qty-badge-text{
@@ -331,6 +332,11 @@
   .btn-order:hover{background:var(--brand-dark);transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(0,0,0,.5);}
   .btn-order:active{transform:translate(1px,1px);box-shadow:2px 2px 0 rgba(0,0,0,.5);}
   .btn-order:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:4px 4px 0 rgba(0,0,0,.5);}
+  /* Once the design proof is approved (button enabled), it switches to the
+     teal accent so it visibly reads as "ready to go" rather than the default
+     brand blue used everywhere else. */
+  .btn-order:not(:disabled){background:var(--accent);}
+  .btn-order:not(:disabled):hover{background:var(--accent-dark);}
   .btn-order .btn-order-total{font-weight:800;}
   .approve-row{
     display:flex;align-items:flex-start;gap:9px;margin-top:20px;cursor:pointer;
@@ -1149,12 +1155,15 @@
 
   function updatePreview(){
     var w = state.width, h = state.height;
-    var box = 180; // px available inside the 220x220 svg
+    // 150px (not the full 220 canvas) so there's a consistent margin on
+    // every side for the dimension lines (top/left) and the qty badge
+    // (bottom/right) to sit in without crowding the shape itself.
+    var box = 150;
     var scale = box / Math.max(w, h);
     // At extreme aspect ratios (e.g. 10mm x 1300mm) the short side can scale
     // down to a near-invisible sliver — floor it to a minimum visible size
     // so the preview still reads as a shape rather than a hairline.
-    var minPx = 14;
+    var minPx = 12;
     var pw = Math.max(w * scale, minPx), ph = Math.max(h * scale, minPx);
     var x = (220 - pw) / 2, y = (220 - ph) / 2;
 
@@ -1164,13 +1173,13 @@
     if(state.shape === 'custom'){
       if(state.image && state.imagePreviewable && state.imageContour){
         // Size the display box to the traced artwork's own aspect ratio, the
-        // same way every other shape fits itself into the 180px box.
+        // same way every other shape fits itself into the 150px box.
         var ccw = state.imageContour.cw, cch = state.imageContour.ch;
         var cscale = box / Math.max(ccw, cch);
         pw = Math.max(ccw * cscale, minPx); ph = Math.max(cch * cscale, minPx);
         x = (220 - pw) / 2; y = (220 - ph) / 2;
       } else {
-        pw = 183; ph = 150; x = 15; y = 15;
+        pw = 153; ph = 125; x = 34; y = 48;
       }
     }
 
@@ -1186,6 +1195,11 @@
     // a thin 200x60mm rectangle. Clamp so it never vanishes or overwhelms.
     var haloJoin = (state.shape === 'square' || state.shape === 'rectangle') ? 'miter' : 'round';
     var haloWidth = clamp(Math.min(pw, ph) * 0.09, 6, 16);
+    // Curved edges optically read as thinner than straight ones at the same
+    // stroke width, so give circles/ovals a bit more to compensate.
+    if(state.shape === 'circle' || state.shape === 'oval'){
+      haloWidth = clamp(haloWidth * 1.4, 9, 20);
+    }
     var halo = '<' + geo.tag + ' ' + geo.attrs + ' fill="#ffffff" stroke="#ffffff" stroke-width="' + haloWidth + '" stroke-linejoin="' + haloJoin + '"/>';
 
     var markup;
@@ -1212,10 +1226,35 @@
       markup = halo + '<' + geo.tag + ' ' + geo.attrs + ' fill="' + fillColor + '" stroke="#16181d" stroke-width="3"/>';
     }
 
-    // Quantity badge — anchored to the shape's own bounding box (not the
-    // fixed SVG canvas) so it overlaps the sticker itself rather than
-    // floating in empty space when the shape is small or off-centre.
-    var badgeX = x + pw * 0.78, badgeY = y + ph * 0.92;
+    var unit = UNIT_LABEL[state.unit];
+    var dispW = fromMM(w, state.unit), dispH = fromMM(h, state.unit);
+
+    // Dimension lines (technical-drawing style): width along the top edge,
+    // height along the left edge, each with extension ticks, an arrow-tipped
+    // line, and a text label — so the actual measurements are always shown
+    // directly against the shape, not just in the caption underneath.
+    var dimGap = 14, arrow = 4;
+    var dimColor = 'rgba(255,255,255,.85)', tickColor = 'rgba(255,255,255,.4)';
+    var dimW_y = y - dimGap, dimH_x = x - dimGap;
+    var dims =
+      '<line x1="' + x + '" y1="' + (y - 4) + '" x2="' + x + '" y2="' + (dimW_y - 3) + '" stroke="' + tickColor + '" stroke-width="1"/>' +
+      '<line x1="' + (x + pw) + '" y1="' + (y - 4) + '" x2="' + (x + pw) + '" y2="' + (dimW_y - 3) + '" stroke="' + tickColor + '" stroke-width="1"/>' +
+      '<line x1="' + x + '" y1="' + dimW_y + '" x2="' + (x + pw) + '" y2="' + dimW_y + '" stroke="' + dimColor + '" stroke-width="1.3"/>' +
+      '<path d="M ' + x + ' ' + dimW_y + ' L ' + (x + arrow * 2) + ' ' + (dimW_y - arrow) + ' L ' + (x + arrow * 2) + ' ' + (dimW_y + arrow) + ' Z" fill="' + dimColor + '"/>' +
+      '<path d="M ' + (x + pw) + ' ' + dimW_y + ' L ' + (x + pw - arrow * 2) + ' ' + (dimW_y - arrow) + ' L ' + (x + pw - arrow * 2) + ' ' + (dimW_y + arrow) + ' Z" fill="' + dimColor + '"/>' +
+      '<text x="' + (x + pw / 2) + '" y="' + (dimW_y - 6) + '" font-size="11" font-weight="700" fill="' + dimColor + '" text-anchor="middle" font-family="inherit">' + dispW + unit + '</text>' +
+      '<line x1="' + (x - 4) + '" y1="' + y + '" x2="' + (dimH_x - 3) + '" y2="' + y + '" stroke="' + tickColor + '" stroke-width="1"/>' +
+      '<line x1="' + (x - 4) + '" y1="' + (y + ph) + '" x2="' + (dimH_x - 3) + '" y2="' + (y + ph) + '" stroke="' + tickColor + '" stroke-width="1"/>' +
+      '<line x1="' + dimH_x + '" y1="' + y + '" x2="' + dimH_x + '" y2="' + (y + ph) + '" stroke="' + dimColor + '" stroke-width="1.3"/>' +
+      '<path d="M ' + dimH_x + ' ' + y + ' L ' + (dimH_x - arrow) + ' ' + (y + arrow * 2) + ' L ' + (dimH_x + arrow) + ' ' + (y + arrow * 2) + ' Z" fill="' + dimColor + '"/>' +
+      '<path d="M ' + dimH_x + ' ' + (y + ph) + ' L ' + (dimH_x - arrow) + ' ' + (y + ph - arrow * 2) + ' L ' + (dimH_x + arrow) + ' ' + (y + ph - arrow * 2) + ' Z" fill="' + dimColor + '"/>' +
+      '<text x="0" y="0" font-size="11" font-weight="700" fill="' + dimColor + '" text-anchor="middle" font-family="inherit" transform="translate(' + (dimH_x - 8) + ' ' + (y + ph / 2) + ') rotate(-90)">' + dispH + unit + '</text>';
+    markup += dims;
+
+    // Quantity badge — hangs just off the shape's bottom-right corner (fixed
+    // pixel offset from the corner, not a fraction of the shape) so it reads
+    // as a price-tag flourish rather than covering the design itself.
+    var badgeX = x + pw - 46, badgeY = y + ph + 16;
     markup += '<g transform="rotate(-10 ' + badgeX + ' ' + badgeY + ')">' +
               '<text x="' + (badgeX + 4) + '" y="' + (badgeY + 4) + '" font-size="44" font-weight="900" fill="rgba(0,0,0,.35)" style="letter-spacing:-2px;font-family:inherit;">×' + state.qty + '</text>' +
               '<text x="' + badgeX + '" y="' + badgeY + '" class="qty-badge-text">×' + state.qty + '</text>' +
@@ -1223,8 +1262,6 @@
 
     previewSvg.innerHTML = markup;
 
-    var unit = UNIT_LABEL[state.unit];
-    var dispW = fromMM(w, state.unit), dispH = fromMM(h, state.unit);
     var label = state.shape === 'square' ? (dispW + unit + ' × ' + dispW + unit + ' square')
               : state.shape === 'circle' ? (dispW + unit + ' diameter circle')
               : (dispW + unit + ' × ' + dispH + unit + ' ' + state.shape);
